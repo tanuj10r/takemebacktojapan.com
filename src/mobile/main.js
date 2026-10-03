@@ -489,7 +489,8 @@ function tipsyStep(dt) {
 /* ------------------------------- the screen ------------------------------- */
 function resize() {
   const vv = window.visualViewport;
-  const w = Math.round(vv?.width ?? window.innerWidth), h = Math.round(vv?.height ?? window.innerHeight);
+  // (the portrait phone: the canvas is the top three quarters, m.html body.pui; its own size, then)
+  const w = Math.round(MOBILE.portrait ? canvas.clientWidth || innerWidth : vv?.width ?? window.innerWidth), h = Math.round(MOBILE.portrait ? canvas.clientHeight || innerHeight : vv?.height ?? window.innerHeight);
   if (w === viewW && h === viewH) return;
   viewW = w; viewH = h;
   camera.aspect = w / h;

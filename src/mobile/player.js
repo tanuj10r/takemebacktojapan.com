@@ -41,6 +41,8 @@ export class TouchPlayer extends Player {
     this._push = { x: 0, y: 0 };    // the stick, eased
     this._glide = { yaw: 0, pitch: 0 };   // rad/s left over from a flick
     this._normal = { x: 0, z: 0, hit: false };
+    this.steer = null;              // Walk with Hachi (panel.js): a world direction { x, z } to walk this frame
+    this.holdWalk = false;          // the hold scheme (panel.js): a finger held on the picture walks you where you face
     this.lookedAt = 0;              // performance.now() of the last look or turn (walking eases the view level only after a moment)
   }
 
@@ -196,6 +198,11 @@ export class TouchPlayer extends Player {
       if (k.has('KeyD') || k.has('ArrowRight')) ks += 1;
       if (k.has('KeyA') || k.has('ArrowLeft')) ks -= 1;
       if (kf || ks) { fwd = kf; side = ks; push = 1; keyed = true; keyRun = k.has('ShiftLeft') || k.has('ShiftRight'); }
+      else if (this.holdWalk) { fwd = 1; side = 0; push = 0.85; }
+      else if (this.steer && push === 0) {
+        const s = this.steer, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+        fwd = -(s.x * sn + s.z * c); side = s.x * c - s.z * sn; push = 0.85;
+      }
     } else P.x = P.y = 0;
     // a full push held a moment breaks into a run; the run lasts while the push stays high
     if (keyed) { this._edgeT = 0; this._setRun(keyRun); }

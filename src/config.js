@@ -1063,6 +1063,9 @@ export const ANIMALS = {
  *           flips it once the phone version is approved.
  * ------------------------------------------------------------------ */
 export const MOBILE = {
+  /* (Tan, 2026-10-03) the phone is a glimpse in portrait: the town in the top three quarters, a panel of controls and the
+   * guide line in the bottom quarter (mobile/panel.js); turned sideways it asks to be turned back */
+  portrait: true,
   route: true,
   /* The mini town (src/mobile/plan.js): the desktop's plan with the block row south of lane 112 taken out;
    * everything south of it (the plaza, the station, the line, the crossing, Hachi's home, 鏡池, the bench)

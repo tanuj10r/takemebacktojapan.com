@@ -789,6 +789,15 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
   };
   const _where = { x: 0, y: 0, z: 0, watching: false };
   GUIDE.where = () => { _where.x = G.x; _where.y = G.y; _where.z = G.z; _where.watching = SHOW.sat; return _where; };
+  /** Where the tour stands (the phone's guide line and its follow-Hachi walk): the next stop not had (its tour leg's
+   *  `id` or `visit`, and where), how many of the stops are had, how many there are, his state and target. */
+  GUIDE.tourInfo = () => {
+    const stops = TOUR.filter((L) => (L.id && L.id !== 'view') || L.visit);
+    const had = stops.filter((L) => (L.visit ? TB.visited.has(L.visit) : G.done.has(L.id))).length;
+    let next = null;
+    for (let k = Math.max(0, G.leg ?? 0); k < TOUR.length; k++) { const L = TOUR[k]; if (((L.id && L.id !== 'view') || L.visit) && !(L.visit ? TB.visited.has(L.visit) : G.done.has(L.id))) { next = L; break; } }
+    return { next: next ? (next.visit ?? next.id) : null, had, of: stops.length, state: G.state, target: G.target ? { x: G.target.x, z: G.target.z, id: G.target.id ?? null } : null, over: !!G.gateDone };
+  };
   /** The pup's frame while it watches: returns how it moved ('still' | 'moving' ...), or null when it isn't watching. */
   const showStep = (dt, pose) => {
     const o = SHOW.on;

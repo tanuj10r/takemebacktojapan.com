@@ -35,7 +35,7 @@ const CHEVRON = '<svg viewBox="0 0 132 132" aria-hidden="true"><g fill="none" st
 const SWIPE = '<svg viewBox="0 0 48 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
   + '<path d="M9 12h30M14 7l-5 5 5 5M34 7l5 5-5 5"/></g><circle cx="24" cy="12" r="4.2" fill="currentColor"/></svg>';
 
-export function createTouch(player, { surface = document.body, isPlaying = () => true, onTap = null, onDrag = null, parent = document.body } = {}) {
+export function createTouch(player, { surface = document.body, isPlaying = () => true, onTap = null, onDrag = null, onHold = null, parent = document.body } = {}) {
   const S = TUNE.stick, L = TUNE.look, TAP = TUNE.tap;
   const R = S.radius, B = S.base, K = S.knob;
   const style = document.createElement('style');
@@ -81,12 +81,13 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
   parent.append(base, knob, hint);
 
   let stickId = null, cx = 0, cy = 0, shown = false, lookedPx = 0;
+  let holdTimer = 0, holding = null;
   const looks = new Map();          // pointerId -> { x, y, t, v, n, x0, y0, t0, moved, trail }
   const vw = () => window.innerWidth, vh = () => window.innerHeight;
   // where the stick rests when no thumb is on it: bottom left, inside the safe area
   let insets = null;               // the safe area, measured once per screen size
-  const right = S.side === 'right';
-  const rest = () => { insets ??= [safe(right ? 'r' : 'l'), safe('b')]; return [right ? vw() - S.rest[0] - insets[0] : S.rest[0] + insets[0], vh() - S.rest[1] - insets[1]]; };
+  // (read each time: the portrait panel switches schemes, and with them the stick's side and rest, panel.js)
+  const rest = () => { const right = S.side === 'right'; insets ??= { l: safe('l'), r: safe('r'), b: safe('b') }; return [right ? vw() - S.rest[0] - insets.r : S.rest[0] + (S.restAbs ? 0 : insets.l), vh() - S.rest[1] - (S.restAbs ? 0 : insets.b)]; };
   const place = (el, x, y) => { el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`; };
   const home = () => { const [x, y] = rest(); cx = x; cy = y; place(base, x, y); place(knob, x, y); };
   const show = (on) => {
@@ -97,7 +98,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
 
   const inStickZone = (x, y) => {
     if (S.fixed) { const [hx, hy] = rest(); return Math.hypot(x - hx, y - hy) < (B / 2) * S.grab; }
-    return (right ? x > vw() * (1 - S.zone) : x < vw() * S.zone) && y > vh() * S.top;
+    return (S.side === 'right' ? x > vw() * (1 - S.zone) : x < vw() * S.zone) && y > vh() * S.top;
   };
 
   function stickMove(x, y) {
@@ -118,6 +119,9 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
 
   surface.addEventListener('pointerdown', (e) => {
     if (!isPlaying()) return;
+    // (the portrait panel: the surface is the whole page; its buttons are their own, and only the picture looks)
+    if (surface !== e.target && e.target.closest?.('button, a, .pp-pad, .mh, .fullmap')) return;
+    const onPicture = !e.target.closest?.('.pp');
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (!S.off && stickId === null && e.pointerType !== 'mouse' && inStickZone(e.clientX, e.clientY)) {
       stickId = e.pointerId;
@@ -131,9 +135,11 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
       place(base, cx, cy);
       stickMove(e.clientX, e.clientY);
       base.classList.add('used');
-    } else {
+    } else if (onPicture) {
       const t = e.timeStamp || performance.now();
       looks.set(e.pointerId, { x: e.clientX, y: e.clientY, t, v: 0, n: 0, x0: e.clientX, y0: e.clientY, t0: t, moved: 0, trail: [] });
+      // the hold scheme (panel.js): a finger kept on the picture a moment walks you on while it stays (it still looks)
+      if (onHold && looks.size === 1) { const id = e.pointerId; holdTimer = setTimeout(() => { if (looks.has(id) && isPlaying()) { holding = id; onHold(true); } }, 180); }
       player._glide.yaw = player._glide.pitch = 0;            // a new touch stops a glide
     }
     try { surface.setPointerCapture?.(e.pointerId); } catch { /* fine */ }
@@ -182,6 +188,8 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
     const l = looks.get(e.pointerId);
     if (!l) return;
     looks.delete(e.pointerId);
+    clearTimeout(holdTimer);
+    if (holding === e.pointerId) { holding = null; onHold?.(false); return; }
     const now = e.timeStamp || performance.now();
     // a tap: quick and still, on the view
     if (e.type === 'pointerup' && onTap && isPlaying() && now - l.t0 < TAP.ms
@@ -212,6 +220,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
     /** Playing or not: the stick shows only in play; a pause lets go of everything. */
     setPlaying(on) {
       if (!on) {
+        clearTimeout(holdTimer); if (holding !== null) { holding = null; onHold?.(false); }
         stickId = null; looks.clear();
         player.stick.x = player.stick.y = 0;
         for (const el of [base, knob]) { el.style.transition = ''; el.classList.remove('on'); }

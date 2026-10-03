@@ -6,9 +6,10 @@ import { watchSoundLabels, createSoundLabels } from '../ui/soundLabels.js';
 import { TRAIN_SOUND } from '../world/line/sfx.js';
 import { GUIDE } from '../world/animals/guide.js';
 import { STRINGS, MOBILE_STRINGS as M } from '../data/strings.js';
-import { VOLUME_STEPS, DEFAULT_VOLUME, volumeGain, MAKER } from '../config.js';
+import { VOLUME_STEPS, DEFAULT_VOLUME, volumeGain, MAKER, MOBILE } from '../config.js';
 import { TouchPlayer } from './player.js';
 import { createTouch } from './touch.js';
+import { createPanel, SCHEMES } from './panel.js';
 import { createMobileHud } from './hud.js';
 import { pickAction, actionWords } from './controls/spots.js';
 import { watchMediaElements, unlockAudio, audioState, watchInterruptions, wakeAudio } from './audio.js';
@@ -244,7 +245,31 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
   });
 
   /* ---- touch; playing or paused ---- */
-  const touch = createTouch(player, { surface: canvas, isPlaying: () => player.locked && !minimap.fullOpen });
+  /* the portrait phone (Tan, 2026-10-03): the bottom quarter's panel, its three control schemes (mobile/panel.js) */
+  const spotList = () => world.experiences.list.concat(world.lawson?.experiences?.list ?? [], world.townExperiences?.list ?? []);
+  const panel = MOBILE.portrait ? createPanel({ player, world, hud, act: () => act(), whistle: () => whistle(), pause: () => pause(), spots: spotList }) : null;
+  if (panel) {
+    document.body.classList.add('pui');
+    // the controls switch, in the pause card
+    const col = document.querySelector('.mh-pause .col');
+    const sw = document.createElement('div');
+    sw.innerHTML = `<p class="pp-switch-t">${M.panel.switchTitle}</p><div class="pp-switch">${SCHEMES.map((k) => `<button type="button" data-scheme="${k}">${M.panel.schemes[k]}</button>`).join('')}</div>`;
+    col?.querySelector('[data-b="restart"]')?.after(sw);
+    const mark = () => { for (const b of sw.querySelectorAll('[data-scheme]')) b.classList.toggle('on', b.dataset.scheme === panel.scheme); };
+    sw.addEventListener('click', (e) => { const b = e.target.closest('[data-scheme]'); if (b) { panel.setScheme(b.dataset.scheme); mark(); } });
+    mark();
+    // turned sideways: ask to be turned upright
+    const turn = document.createElement('div');
+    turn.className = 'pp-turn';
+    turn.innerHTML = `<div><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="15" y="6" width="18" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M9 30a15 15 0 0 1 4-14M13 16l-1 6M13 16l-6 1" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><p>${M.panel.turn}</p></div>`;
+    document.body.appendChild(turn);
+  }
+  const touch = createTouch(player, {
+    surface: panel ? document.documentElement : canvas, isPlaying: () => player.locked && !minimap.fullOpen,
+    onHold: panel ? (on) => panel.holdWalk(on) : null,
+    onDrag: panel ? () => panel.stopFollow() : null,
+  });
+  if (panel) panel.onScheme = () => touch.setPlaying(player.locked);      // (the stick shows or hides with its scheme)
 
   player.onLockChange = (locked) => {
     if (!locked && minimap.fullOpen) { minimap.setFull(false); player.suspended = false; hud.setMapOpen(false); }
@@ -274,7 +299,7 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
     setTimeout(() => boot.remove(), 600);
     hud.holdCard = false;
     player.lock();
-    if (window.innerHeight > window.innerWidth * 1.1) hud.flash(M.rotate, 4200);
+    if (!panel && window.innerHeight > window.innerWidth * 1.1) hud.flash(M.rotate, 4200);
     api.onStart?.();
   }
   const startBtn = boot?.querySelector('#start');
@@ -288,7 +313,7 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
 
   let menuShown = null, lastW = 0, lastH = 0;
   const api = {
-    player, hud, sound, touch, minimap, labels,
+    player, hud, sound, touch, minimap, labels, panel,
     /** the postcard has been up this page load (the tour is offered again only after it; the checks set it) */
     get postcardSeen() { return postcardSeen; }, set postcardSeen(v) { postcardSeen = !!v; },
     /** main.js's: (locked) => {} when play starts or stops; () => {} once, at Start. */
@@ -308,8 +333,9 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
       if (w === lastW && h === lastH) return;
       lastW = w; lastH = h;
       touch.resize();
+      panel?.resize();
       if (minimap.fullOpen) drawMap();     // (drawn again at the new size)
-      if (h > w * 1.1 && player.locked) hud.flash(M.rotate, 3600);
+      if (!panel && h > w * 1.1 && player.locked) hud.flash(M.rotate, 3600);
     },
     /**
      * Each drawn frame, after world.update and shop.update (dt 0 while paused): the cards' song, the map, what the
@@ -330,7 +356,9 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
       player.hovered = hovered;
       pupOffer = !hovered && free && !player.seat && !shop?.visiting && !player.suspended && postcardDue < 0 && postcardSeen && GUIDE.offer();
       const seated = free && player.seat?.dir > 0 && player.seat.k > 0.98;
-      hud.setAction(hovered ? actionWords(hovered.label) : pupOffer ? STRINGS.hachi.again : seated ? STRINGS.keys.standUp : null);
+      const actionNow = hovered ? actionWords(hovered.label) : pupOffer ? STRINGS.hachi.again : seated ? STRINGS.keys.standUp : null;
+      hud.setAction(actionNow);
+      panel?.update(dt, player.locked ? actionNow : null);
       trainWait.update(world.line?.station?.wait, player.locked && !open && !choosing);
       hud.setCrosshair(!choosing && !famous() && !player.seat);
       return hovered;

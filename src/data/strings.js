@@ -251,6 +251,32 @@ export const MOBILE_STRINGS = {
   aria: { hachi: 'Whistle for Hachi', time: 'Change the time of day', pause: 'Pause', map: 'Open the map', act: 'Interact' },
   /* until each has been done once */
   hints: { walk: 'Walk & turn', look: 'Drag to look around' },
+  /* the portrait phone's bottom panel (mobile/panel.js) */
+  panel: {
+    walkWithHachi: 'Walk with Hachi', walkSub: 'he leads, you look',
+    stopFollowing: 'Stop here', followingSub: 'walking behind Hachi',
+    heading: (place) => `Hachi is heading to ${place}`, stop: (k, n) => `Stop ${k} of ${n}`, next: 'the next stop',
+    overTitle: 'You’ve seen the whole town', overLine: 'Wander as you like, or take the tour again',
+    idleTitle: 'Fujikawaguchikko', idleLine: 'Walk with Hachi, or explore on your own',
+    holdHint: 'Hold the picture to walk · slide to steer',
+    switchTitle: 'Controls', schemes: { pad: 'Pad', hold: 'Hold to walk', stick: 'Two thumbs' },
+    turn: 'Turn your phone upright',
+    /* [name, a line about it]: the guide line at a place */
+    places: {
+      view: ['The famous view', 'NIPPON with Mt. Fuji behind it'],
+      konbini: ['NIPPON · ニッポン', 'Pick a snack, pay at the till, eat it outside'],
+      han: ['Han’s RX-7', 'Say hello, and watch him drift'],
+      mochi: ['ぺったん堂 · mochi pounding', 'Three moon rabbits pound fresh mochi'],
+      train: ['The station · 富士川口湖駅', 'Wait for the train and listen'],
+      slowlife: ['The bench · ひと休み', 'Sit a while and look at Fuji'],
+      gate: ['Deer Park · 鹿公園', 'Coming soon. Hachi naps here'],
+      home: ['Hachi’s home · ハチのおうち', 'His garden, his ball, his bed'],
+      shrine: ['The shrine · 富士見稲荷', 'Wind chimes and a guardian fox'],
+      donki: ['ドンペン堂', 'A loud, happy megastore'],
+      station: ['The station · 富士川口湖駅', 'Announcements on the platform'],
+      crossing: ['The level crossing · 踏切', 'Bells, barriers, the train going by'],
+    },
+  },
   closeMap: 'Tap to close',
   times: { morning: 'Morning', golden: 'Golden hour', night: 'Night' },
   timeShort: { morning: 'Morning', golden: 'Golden', night: 'Night' },
