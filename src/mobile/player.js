@@ -180,7 +180,13 @@ export class TouchPlayer extends Player {
       P.x += (this.stick.x - P.x) * e; P.y += (this.stick.y - P.y) * e;
       fwd = -P.y; side = P.x;
       push = Math.min(1, Math.hypot(P.x, P.y));
-      if (S.steer) {
+      if (S.pressWalk && this.stick.held) {
+        // (Tan, 2026-10-03) a thumb on the stick walks you on; slid up faster (into a run), pulled down slower then back
+        const f = Math.max(-1, Math.min(1, S.pressBase - P.y));
+        fwd = f; side = P.x;
+        push = Math.min(1, Math.hypot(f, P.x));
+        if (f < 0) { push = Math.min(push, 0.55); this._edgeT = 0; if (this.running) this._setRun(false); }      // (back is a step, never a run)
+      } else if (S.steer) {
         // one stick (Tan, 2026-10-03): across turns, up and down walk; the walk's pace from the push along
         const ax = Math.abs(P.x), turn = ax < 0.02 ? 0 : Math.sign(P.x) * Math.pow(Math.min(1, ax), S.turnCurve) * S.turn;
         if (turn) { this.yaw -= turn * dt; this.lookedAt = performance.now(); }
@@ -207,9 +213,10 @@ export class TouchPlayer extends Player {
     // a full push held a moment breaks into a run; the run lasts while the push stays high
     if (keyed) { this._edgeT = 0; this._setRun(keyRun); }
     else {
-      this._edgeT = this.push >= S.edge ? this._edgeT + dt : 0;
+      const ep = S.pressWalk && this.stick.held ? Math.max(0, -this.stick.y) : this.push;      // (pressWalk: only slid up runs)
+      this._edgeT = ep >= S.edge ? this._edgeT + dt : 0;
       if (!this.running && this._edgeT >= S.runAfter) this._setRun(true);
-      else if (this.running && this.push < S.runHold) this._setRun(false);
+      else if (this.running && ep < S.runHold) this._setRun(false);
     }
     this._runK += ((this.running ? 1 : 0) - this._runK) * (1 - Math.exp(-dt / Math.max(0.05, S.runBlend / 3)));
     const walk = this.walkSpeed * stickPace(push);

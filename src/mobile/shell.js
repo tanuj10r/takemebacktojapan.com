@@ -9,7 +9,7 @@ import { STRINGS, MOBILE_STRINGS as M } from '../data/strings.js';
 import { VOLUME_STEPS, DEFAULT_VOLUME, volumeGain, MAKER, MOBILE } from '../config.js';
 import { TouchPlayer } from './player.js';
 import { createTouch } from './touch.js';
-import { createPanel, SCHEMES } from './panel.js';
+import { createPanel } from './panel.js';
 import { createMobileHud } from './hud.js';
 import { pickAction, actionWords } from './controls/spots.js';
 import { watchMediaElements, unlockAudio, audioState, watchInterruptions, wakeAudio } from './audio.js';
@@ -250,14 +250,6 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
   const panel = MOBILE.portrait ? createPanel({ player, world, hud, act: () => act(), whistle: () => whistle(), pause: () => pause(), spots: spotList }) : null;
   if (panel) {
     document.body.classList.add('pui');
-    // the controls switch, in the pause card
-    const col = document.querySelector('.mh-pause .col');
-    const sw = document.createElement('div');
-    sw.innerHTML = `<p class="pp-switch-t">${M.panel.switchTitle}</p><div class="pp-switch">${SCHEMES.map((k) => `<button type="button" data-scheme="${k}">${M.panel.schemes[k]}</button>`).join('')}</div>`;
-    col?.querySelector('[data-b="restart"]')?.after(sw);
-    const mark = () => { for (const b of sw.querySelectorAll('[data-scheme]')) b.classList.toggle('on', b.dataset.scheme === panel.scheme); };
-    sw.addEventListener('click', (e) => { const b = e.target.closest('[data-scheme]'); if (b) { panel.setScheme(b.dataset.scheme); mark(); } });
-    mark();
     // turned sideways: ask to be turned upright
     const turn = document.createElement('div');
     turn.className = 'pp-turn';
@@ -266,10 +258,10 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
   }
   const touch = createTouch(player, {
     surface: panel ? document.documentElement : canvas, isPlaying: () => player.locked && !minimap.fullOpen,
-    onHold: panel ? (on) => panel.holdWalk(on) : null,
+    onStick: panel ? () => panel.stopFollow() : null,
     onDrag: panel ? () => panel.stopFollow() : null,
   });
-  if (panel) panel.onScheme = () => touch.setPlaying(player.locked);      // (the stick shows or hides with its scheme)
+  if (panel) panel.onScheme = () => touch.setPlaying(player.locked);      // (the stick shows in the panel once placed)
 
   player.onLockChange = (locked) => {
     if (!locked && minimap.fullOpen) { minimap.setFull(false); player.suspended = false; hud.setMapOpen(false); }

@@ -35,7 +35,7 @@ const CHEVRON = '<svg viewBox="0 0 132 132" aria-hidden="true"><g fill="none" st
 const SWIPE = '<svg viewBox="0 0 48 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
   + '<path d="M9 12h30M14 7l-5 5 5 5M34 7l5 5-5 5"/></g><circle cx="24" cy="12" r="4.2" fill="currentColor"/></svg>';
 
-export function createTouch(player, { surface = document.body, isPlaying = () => true, onTap = null, onDrag = null, onHold = null, parent = document.body } = {}) {
+export function createTouch(player, { surface = document.body, isPlaying = () => true, onTap = null, onDrag = null, onHold = null, onStick = null, parent = document.body } = {}) {
   const S = TUNE.stick, L = TUNE.look, TAP = TUNE.tap;
   const R = S.radius, B = S.base, K = S.knob;
   const style = document.createElement('style');
@@ -133,6 +133,8 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
       }
       for (const el of [base, knob]) { el.style.transition = 'opacity .1s ease'; el.classList.add('on'); }
       place(base, cx, cy);
+      player.stick.held = true;
+      onStick?.();
       stickMove(e.clientX, e.clientY);
       base.classList.add('used');
     } else if (onPicture) {
@@ -179,7 +181,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
   const end = (e) => {
     if (e.pointerId === stickId) {
       stickId = null;
-      player.stick.x = player.stick.y = 0;
+      player.stick.x = player.stick.y = 0; player.stick.held = false;
       for (const el of [base, knob]) { el.style.transition = ''; el.classList.remove('on'); }
       base.classList.remove('run');
       if (shown) home();
@@ -222,7 +224,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
       if (!on) {
         clearTimeout(holdTimer); if (holding !== null) { holding = null; onHold?.(false); }
         stickId = null; looks.clear();
-        player.stick.x = player.stick.y = 0;
+        player.stick.x = player.stick.y = 0; player.stick.held = false;
         for (const el of [base, knob]) { el.style.transition = ''; el.classList.remove('on'); }
         base.classList.remove('run');
       }

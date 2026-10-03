@@ -9,10 +9,8 @@ import { TUNE } from './controls/tune.js';
  *
  *   the guide line   what is happening and what is next: where Hachi is heading, stop k of n; at a place, its
  *                    name and a line about it
- *   the controls     one of three schemes, switched in the pause card (Tan compares them on a phone):
- *                      pad    four buttons: up walks, down steps back, left and right turn
- *                      hold   no buttons: touch and hold the picture to walk where you face, slide to steer
- *                      stick  a fixed stick in the panel walks and sidesteps; drag the picture to look
+ *   the stick        two thumbs (Tan's pick, 2026-10-03): a fixed stick in the panel; a thumb on it walks you on,
+ *                    slid up faster, pulled down slower then back, across a sidestep; drag the picture to look
  *   the action       one big button: what can be done here ("Order a mochi ¥200", "Sit a while"), else
  *                    "Walk with Hachi": you walk behind him, along his way, and only look
  *   Hachi, Pause
@@ -21,14 +19,9 @@ import { TUNE } from './controls/tune.js';
  * of metres behind him, walks into the ring where he waits, and stops there; any control stops it.
  * ------------------------------------------------------------------ */
 
-export const SCHEMES = ['pad', 'hold', 'stick'];
-const KEY = 'takemebacktojapan-controls';
 
 export function createPanel({ player, world, hud, act, whistle, pause, spots }) {
   const P = M.panel;
-  let scheme = 'pad';
-  try { const q = new URLSearchParams(location.search).get('controls'); scheme = SCHEMES.includes(q) ? q : localStorage.getItem(KEY) ?? 'pad'; } catch { /* optional */ }
-  if (!SCHEMES.includes(scheme)) scheme = 'pad';
 
   const style = document.createElement('style');
   style.textContent = `
@@ -43,13 +36,7 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots }) 
   .pp-rule > div { min-width: 0; }
   .pp-row { flex: 1; min-height: 0; display: flex; align-items: center; gap: 12px; }
   .pp-left { flex: none; width: 112px; height: 112px; position: relative; }
-  .pp-pad button { position: absolute; width: 38px; height: 38px; border: 0; border-radius: 11px; background: #3b3263; color: #fff;
     display: grid; place-items: center; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); touch-action: none; }
-  .pp-pad button svg { width: 16px; height: 16px; }
-  .pp-pad button.on { background: #5a4d96; transform: scale(.94); }
-  .pp-pad .u { left: 37px; top: 0; } .pp-pad .d { left: 37px; bottom: 0; } .pp-pad .l { left: 0; top: 37px; } .pp-pad .r { right: 0; top: 37px; }
-  .pp-pad i { position: absolute; left: 37px; top: 37px; width: 38px; height: 38px; border-radius: 11px; background: #e9e1ec; }
-  .pp-hold { display: grid; place-items: center; text-align: center; font-size: 11.5px; font-weight: 700; line-height: 1.3; color: #6c6482; border: 2px dashed #e3d6da; border-radius: 16px; padding: 6px; }
   .pp-act { flex: 1; min-width: 0; height: 64px; border: 0; border-radius: 18px; background: #3b3263; color: #fff; display: flex; align-items: center; gap: 10px;
     padding: 0 10px 0 8px; text-align: left; box-shadow: 0 0 0 3px rgba(255,221,87,.9), inset 0 -3px 0 rgba(0,0,0,.25); touch-action: manipulation; }
   .pp-act.follow { box-shadow: 0 0 0 3px rgba(229,155,176,.9), inset 0 -3px 0 rgba(0,0,0,.25); }
@@ -63,15 +50,9 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots }) 
     box-shadow: 0 0 0 1px #e3d9e0, 0 2px 6px rgba(20,12,40,.12); touch-action: manipulation; }
   .pp-side svg { width: 18px; height: 18px; }
   .pp-side small { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-  /* the controls switch, in the pause card */
-  .pp-switch { display: flex; gap: 6px; margin: 4px 0 2px; }
-  .pp-switch button { flex: 1; min-height: 40px; border: 1.5px solid #3b3263; border-radius: 10px; background: #fff; color: #3b3263; font-weight: 700; font-size: 12.5px; }
-  .pp-switch button.on { background: #3b3263; color: #fff; }
-  .pp-switch-t { margin: 8px 0 0; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #6c6482; }
   `;
   document.head.appendChild(style);
 
-  const ARROW = (r) => `<svg viewBox="0 0 16 16" style="transform:rotate(${r}deg)"><path d="M8 3l5 8H3z" fill="currentColor"/></svg>`;
   const PAW = '<svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="7" cy="9" rx="2.2" ry="2.8"/><ellipse cx="12" cy="6.5" rx="2.2" ry="2.8"/><ellipse cx="17" cy="9" rx="2.2" ry="2.8"/><path d="M12 11.5c-3.2 0-6 3.6-6 6.1 0 1.6 1.3 2.4 3 2.4 1.2 0 2-.6 3-.6s1.8.6 3 .6c1.7 0 3-.8 3-2.4 0-2.5-2.8-6.1-6-6.1z"/></svg>';
   const HAND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11V4.5a1.5 1.5 0 0 1 3 0V12M14 11.5V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-4.6-2.2L3.6 15a1.5 1.5 0 0 1 2.3-1.9L8 15"/></svg>';
   const PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
@@ -91,44 +72,17 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots }) 
   const ruleB = el.querySelector('.pp-rule b'), ruleS = el.querySelector('.pp-rule small');
   const left = el.querySelector('.pp-left'), actBtn = el.querySelector('.pp-act'), actI = actBtn.querySelector('i'), actS = actBtn.querySelector('span');
 
-  /* ---- the schemes ---- */
-  const held = { u: 0, d: 0, l: 0, r: 0 };
-  function padInput() {
-    if (scheme !== 'pad') return;
-    player.stick.x = held.r - held.l;
-    player.stick.y = held.d - held.u;
-    if (held.u || held.d || held.l || held.r) follow(false);
-  }
+  /* ---- the stick (Tan, 2026-10-03: two thumbs; "pressing on the toggle makes the user walk, sliding the toggle up
+   * increases speed"): touch.js's own stick, fixed in the panel's left square.  A thumb on it walks you on; slid up,
+   * faster, into a run; pulled down, slower, then back; across, a sidestep.  A drag on the picture looks. ---- */
   function build() {
-    for (const k of Object.keys(held)) held[k] = 0;
-    player.stick.x = player.stick.y = 0;
-    player.holdWalk = false;
     const S = TUNE.stick;
-    S.restAbs = false;
-    if (scheme === 'pad') {
-      Object.assign(S, { off: true, steer: true, runAfter: 1e9 });
-      left.className = 'pp-left pp-pad';
-      left.innerHTML = `<i></i><button class="u" type="button" data-d="u">${ARROW(0)}</button><button class="l" type="button" data-d="l">${ARROW(-90)}</button><button class="r" type="button" data-d="r">${ARROW(90)}</button><button class="d" type="button" data-d="d">${ARROW(180)}</button>`;
-      for (const b of left.querySelectorAll('[data-d]')) {
-        const k = b.dataset.d;
-        const on = (e) => { e.preventDefault(); held[k] = 1; b.classList.add('on'); padInput(); try { b.setPointerCapture(e.pointerId); } catch { /* fine */ } };
-        const off = () => { held[k] = 0; b.classList.remove('on'); padInput(); };
-        b.addEventListener('pointerdown', on);
-        b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
-      }
-    } else if (scheme === 'hold') {
-      Object.assign(S, { off: true });
-      left.className = 'pp-left pp-hold';
-      left.innerHTML = `<span>${P.holdHint}</span>`;
-    } else {
-      // the stick: touch.js's own, fixed, resting in the panel's left square; it walks and sidesteps, a drag on the picture looks
-      Object.assign(S, { off: false, side: 'left', fixed: true, steer: false, runAfter: 0.28, restAbs: true });
-      left.className = 'pp-left';
-      left.innerHTML = '';
-      const r = left.getBoundingClientRect();
-      S.rest = [r.left + r.width / 2, innerHeight - (r.top + r.height / 2)];
-    }
-    api.onScheme?.(scheme);
+    Object.assign(S, { off: false, side: 'left', fixed: true, steer: false, pressWalk: true, restAbs: true, runAfter: 0.28 });
+    left.className = 'pp-left';
+    left.innerHTML = '';
+    const r = left.getBoundingClientRect();
+    S.rest = [r.left + r.width / 2, innerHeight - (r.top + r.height / 2)];
+    api.onScheme?.();
   }
 
   /* ---- Walk with Hachi ---- */
@@ -197,13 +151,6 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots }) 
   }
 
   const api = {
-    get scheme() { return scheme; },
-    setScheme(s) {
-      if (!SCHEMES.includes(s) || s === scheme) return;
-      scheme = s;
-      try { localStorage.setItem(KEY, s); } catch { /* optional */ }
-      build();
-    },
     get following() { return following; },
     follow,
     onScheme: null,
@@ -225,11 +172,9 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots }) 
         actBtn.classList.toggle('follow', !action);
       }
     },
-    /** the hold scheme: a finger held on the picture (touch.js) */
-    holdWalk(on) { if (scheme === 'hold') { player.holdWalk = on; if (on) follow(false); } },
     /** any look or walk of yours stops the follow */
     stopFollow() { follow(false); },
-    resize() { if (scheme === 'stick') build(); },
+    resize() { build(); },
     el,
   };
   build();
