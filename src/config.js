@@ -1068,7 +1068,7 @@ export const MOBILE = {
    * everything south of it (the plaza, the station, the line, the crossing, Hachi's home, 鏡池, the bench)
    * stands `dz` m further north.  Numbers written into the shared builders are moved by the phone build
    * itself (vite.config.js miniPlan: the `@dz` and `@mini` marks). */
-  plan: { dz: 32 },
+  plan: { dz: 76 },
   /* The render: the phone's own pixels (its DPR, up to `maxDpr`; an iPhone 15 on its side is 2556 x 1179 at 3),
    * capped at `pixels`.  The scale steps down by `step` only while two seconds of frames average under
    * `fpsLow`, never below `minScale`, and back up over `fpsHigh`. */

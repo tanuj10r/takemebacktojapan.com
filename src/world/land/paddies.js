@@ -353,7 +353,10 @@ export function buildTrack(ctx, parts) {
     parts.add('track', g);
     // walked on at its own height (it wasn't: Hachi stood 12 cm into it at the gate, Tan 2026-09-29)
     ctx.platform({ x0: tx0, x1: tx1, z0: Math.min(z0, z1), z1: Math.max(z0, z1), top: T.top });
-    for (const [a, b] of [[tx0 - 0.8, tx0], [tx1, tx1 + 0.8]]) parts.add('grass', sheetGeo(a, b, z0, z1, 0.05, TILE.grass));
+    for (const [a, b] of [[tx0 - 0.8, tx0], [tx1, tx1 + 0.8]]) {
+      parts.add('grass', sheetGeo(a, b, z0, z1, 0.05, TILE.grass));
+      ctx.surface?.({ x0: a, x1: b, z0: Math.min(z0, z1), z1: Math.max(z0, z1), top: 0.05 });      // (Hachi's paws on the grass, not 2 cm into it)
+    }
   }
 }
 

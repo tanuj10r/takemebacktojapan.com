@@ -72,13 +72,21 @@ export function buildLand(ctx) {
   const scatter = makeScatter();
   const water = makeWater(lctx);
 
-  buildChannel(lctx, parts, scatter, water);
+  /*@mini @*/buildChannel(lctx, parts, scatter, water);/*@@*/      // (the pocket town has no river)
   buildTrack(lctx, parts);                 // the bridge road, from the master junction to the gate
   // the paddies Tan kept, between the main road's shops and the pond
   const plan = planPaddies();
   buildPaddies(lctx, parts, scatter, water, plan);
   buildPumpShed(lctx, parts, plan.apron);
-  buildNotice(lctx, parts, TOWN.land.paddies.box[0] - 0.9, /*@mini 42.4 @*/77.4/*@@*/);   // by the lane z 80's end, facing it
+  /*@mini {
+    // the pocket town: a second, wider field behind the store, the shrine and the plaza, to the line (Tan: "a rice
+    // paddy or two"; what the desktop's back lanes held), its own plan in its own box
+    const keep = TOWN.land.paddies.box;
+    TOWN.land.paddies.box = [-26, 45, 58, 83.5];
+    buildPaddies(lctx, parts, scatter, water, planPaddies());
+    TOWN.land.paddies.box = keep;
+  } @*//*@@*/
+  buildNotice(lctx, parts, TOWN.land.paddies.box[0] - 0.9, /*@mini 24 @*/77.4/*@@*/);   // by the lane z 80's end, facing it
   {
     const p = plan.plots.find((q) => q.kind === 'renge') ?? plan.plots[0];
     const x = (p.sw + p.se) / 2;
@@ -95,7 +103,7 @@ export function buildLand(ctx) {
   group.add(pondGroup);
   const pctx = { ...lctx, add: (o) => { pondGroup.add(o); return o; }, addStatic: add };
   const pondParts = makeParts(mats);
-  buildPond(pctx, pondParts, scatter, water);
+  /*@mini @*/buildPond(pctx, pondParts, scatter, water);/*@@*/      // (nor 鏡池)
   buildGate(lctx, parts);
   buildSlowLife(lctx, scatter);            // ひと休み: the bench where the paddies meet the pond (Tan's experiences)
 

@@ -198,9 +198,9 @@ export const doorLcdTex = () =>
     fit(c, `Next  ${D.east.en}`, L.x + L.w / 2, L.y + 112, L.w - 20, 20, '#4a4a58', { weight: '600', font: SANS });
     // right: the Osaka teaser, small
     const R = { x: 264, y: 8, w: 240, h: 128 };
-    osakaScene(c, R.x, R.y, R.w, R.h, 3);
+    /*@mini c.fillStyle = GREEN; c.fillRect(R.x, R.y, R.w, R.h); fit(c, '富士見線', R.x + R.w / 2, R.y + 56, R.w - 20, 40, '#ffffff'); fit(c, 'Fujimi Line', R.x + R.w / 2, R.y + 98, R.w - 20, 22, '#ffffff', { weight: '600', font: SANS }); @*/    osakaScene(c, R.x, R.y, R.w, R.h, 3);
     c.fillStyle = 'rgba(20,14,40,0.55)'; c.fillRect(R.x, R.y + R.h - 40, R.w, 40);
-    fit(c, `${RIDE.osaka.title}  ${RIDE.osaka.sub}`, R.x + R.w / 2, R.y + R.h - 20, R.w - 16, 20, '#ffd84a');
+    fit(c, `${RIDE.osaka.title}  ${RIDE.osaka.sub}`, R.x + R.w / 2, R.y + R.h - 20, R.w - 16, 20, '#ffd84a');/*@@*/      // (the pocket town: no Osaka)
   });
 
 /** Every ad card in the car, on one small atlas: `n` cells across. */
@@ -212,7 +212,7 @@ export const carAdsTex = () =>
       const x = i * cw;
       c.save();
       c.beginPath(); c.rect(x, 0, cw, h); c.clip();
-      if (a.osaka) {
+      if (/*@mini false && @*//*@@*/a.osaka) {
         osakaScene(c, x, 0, cw, h, 11);
         c.fillStyle = 'rgba(20,14,40,0.6)'; c.fillRect(x, 0, cw, 58);
         fit(c, a.t, x + cw / 2, 20, cw - 10, 22, a.fg);

@@ -93,14 +93,14 @@ export function planNetwork() {
     edges,
     edgeAt,
     crossings: [
-      { edge: edgeAt('z', -50, 30), at: 30 },       // the spine, near the main road
-      { edge: edgeAt('z', -50, /*@mini 88 @*/100/*@@*/), at: /*@mini 88 @*/100/*@@*/ },     // and halfway down
+      /*@mini @*/{ edge: edgeAt('z', -50, 30), at: 30 },/*@@*/       // the spine, near the main road (the pocket town: ドンペン堂's door is here; its one zebra is at the plaza)
+      { edge: edgeAt('z', -50, /*@mini 46 @*/100/*@@*/), at: /*@mini 46 @*/100/*@@*/ },     // and halfway down
       // the master junction (Tan): the main road's zebra (kakko, signals.js) and
       // this one across lane x 30 (piyo), side by side, so both tunes are
       // heard at one corner.  Its walk light alternates with the main road's
       // (offset 19 s puts it inside the main road's car green), as at a real
       // junction, so the two take turns
-      { edge: edgeAt('z', 30, 23.5), at: 23.5, offset: 19, signalised: true },
+      { edge: edgeAt('z', 30, /*@mini 4 @*/23.5/*@@*/), at: /*@mini 4 @*/23.5/*@@*/, offset: 19, signalised: true },      // (the pocket town: across the gate road, behind the car park)
       // and the main road's zebra itself, painted by the kit like every other
       // crossing (stop lines, diamonds, tactile pads); its signals and walk
       // lights are signals.js's (town-edge.js), so no kit walk light here

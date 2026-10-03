@@ -120,8 +120,8 @@ export function buildGate(ctx, parts) {
     ctx.collide(lx - 0.25, lz - 0.25, lx + 0.25, lz + 0.25, 2);
   }
 
-  // beside the gate, a teaser for the next place: the Osaka poster on a timber board
-  {
+  // beside the gate, a teaser for the next place: the Osaka poster on a timber board (not in the pocket town: Tan, 2026-10-03)
+  /*@mini if (false) @*//*@@*/{
     const bx = x - 3.9, bz = z + 1.6, ry = 0.35;
     const c = Math.cos(ry), sn = Math.sin(ry);
     const along = (u, v = 0) => [bx + c * u + sn * v, bz - sn * u + c * v];

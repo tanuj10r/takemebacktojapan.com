@@ -102,7 +102,7 @@ export function buildCore(ctx) {
   const mid = (s, y = 0, n = 5) => ({ x: (s.x0 + s.x1) / 2, z: (s.z0 + s.z1) / 2 + 2, y, n });
   const life = buildLife(ctx, {
     wireRuns: kit.wireRuns, cats: ctx.cats,
-    flocks: [/*@mini @*/mid(at('park'), 0.04),/*@@*/ { ...mid(at('plaza'), 0.17, 6), x: at('plaza').x0 + 12 }, mid(at('shrine'), 0.04, 4), mid(at('vacant'), 0.03, 3)],
+    flocks: [/*@mini @*/mid(at('park'), 0.04),/*@@*/ { ...mid(at('plaza'), 0.17, 6), x: at('plaza').x0 + 12 }, mid(at('shrine'), 0.04, 4)/*@mini ] @*/, mid(at('vacant'), 0.03, 3)]/*@@*/,
   });
   // anyone else with marks for the town's decal mesh (the Lawson's lot, M2e)
   /*@mini globalThis.__sys?.('life'); @*//*@@*/

@@ -347,8 +347,8 @@ export function buildStation(ctx, { kit, service, sets }) {
     [[B.x0 + 8.4, B.z1 - 2.2, Math.PI / 2, 1], [cxE - 4.5, B.z0 + 0.14, 0, 2]]
       .forEach(([x, z, ry, v]) => board(g, posterTex(v), 0.7, 0.98, x, PH + 1.7, z, ry));
     // Osaka, coming soon: the big one inside the entrance, a tall one by the gates
-    board(g, osakaPosterTex('wide'), 2.0, 1.25, cxE + 5.2, PH + 1.65, B.z0 + T0 + 0.02, 0);
-    board(g, osakaPosterTex('tall'), 0.72, 1.01, cxE + 10.0, PH + 1.75, B.z1 - T0 - 0.02, Math.PI);
+    /*@mini @*/board(g, osakaPosterTex('wide'), 2.0, 1.25, cxE + 5.2, PH + 1.65, B.z0 + T0 + 0.02, 0);/*@@*/      // (no Osaka in the pocket town)
+    /*@mini @*/board(g, osakaPosterTex('tall'), 0.72, 1.01, cxE + 10.0, PH + 1.75, B.z1 - T0 - 0.02, Math.PI);/*@@*/      // (no Osaka in the pocket town)
     const bench = makeBench({ x: cxE + 6.2, y: PH, z: B.z0 + 0.8, ry: 0, len: 2.2, wood: true });
     g.add(bench);
     ctx.collide(cxE + 5.0, B.z0 + 0.3, cxE + 7.4, B.z0 + 1.3, PH + 0.8);
@@ -470,7 +470,7 @@ export function buildStation(ctx, { kit, service, sets }) {
     addVending(ctx, { detail: true, x: -68.5, y: PH, z: P1.z0 + 0.55, ry: 0, variant: 2, seed: 8890 });
     reg(ctx, 'prop', -68.5, P1.z0 + 0.55);
     ctx.night?.pool(-68.5, P1.z0 + 1.3, 1.8, { y: PH, color: 0xe8f0ff, strength: 0.8 });
-    board(g, osakaPosterTex('tall'), 0.72, 1.01, -61.2, PH + 1.55, B.z1 + 0.03, 0);
+    /*@mini @*/board(g, osakaPosterTex('tall'), 0.72, 1.01, -61.2, PH + 1.55, B.z1 + 0.03, 0);/*@@*/      // (no Osaka in the pocket town)
     board(g, posterTex(3), 0.7, 0.98, -40.4, PH + 1.55, B.z1 + 0.03, 0);
   }
 

@@ -75,7 +75,8 @@ export function buildAnimals(ctx, { core, spots, facing } = {}) {
   const kinds = [];
   const pb = L.pond.box;
   const pondC = { x: (pb[0] + pb[2]) / 2, z: (pb[1] + pb[3]) / 2, r: 60 };
-  const koi = buildKoi(actx, { shore, inside, water, benches, marks });
+  /* (the pocket town has neither 鏡池 nor the river: no koi, turtles, ducks or heron) */
+  /*@mini @*/  const koi = buildKoi(actx, { shore, inside, water, benches, marks });
   kinds.push({ ...pondC, name: 'koi', wet: true, mesh: 'koi', draw: 55, update: koi.update, list: koi.fish, dbg: koi.dbg });
   const turtles = buildTurtles(actx, { water, marks, shadows, reflect: REFLECT });
   kinds.push({ ...pondC, name: 'turtles', shadowed: true, wet: true, mesh: 'turtles', draw: 70, update: turtles.update, list: turtles.list });
@@ -105,6 +106,7 @@ export function buildAnimals(ctx, { core, spots, facing } = {}) {
     });
     kinds.push({ x: -40, z: -28, r: 80, name: 'heron', wet: true, mesh: 'heron', draw: 110, update: heron.update, list: heron.list });
   }
+  /*@@*/
 
   /* ---- little egrets in the flooded paddies, in twos and threes ---- */
   let rengeSpots = [];

@@ -61,7 +61,10 @@ for (;;) {
 const unlock = () => { try { if (+fs.readFileSync(path.join(LOCK, 'pid'), 'utf8') === process.pid) fs.rmSync(LOCK, { recursive: true, force: true }); } catch {} if (mineB) { try { fs.rmdirSync(BLOCK); } catch {} mineB = false; } };
 process.on('exit', unlock);
 
-const server = await createServer({ root: ROOT, configFile: path.join(ROOT, 'vite.config.js'), logLevel: 'error', server: { port: +process.env.PORT || 5194, strictPort: !!process.env.PORT, host: '127.0.0.1' } });
+// --phone: the phone page (m.html, its own plan: the pocket town) instead of the desktop's; run with --only tour (the
+// other scenarios stand at the desktop's own spots)
+const PHONE = process.argv.includes('--phone');
+const server = await createServer({ root: ROOT, configFile: path.join(ROOT, 'vite.config.js'), ...(PHONE ? { mode: 'mobile' } : {}), logLevel: 'error', server: { port: +process.env.PORT || 5194, strictPort: !!process.env.PORT, host: '127.0.0.1' } });
 await server.listen();
 const base = server.resolvedUrls.local[0];
 const flags = ['--use-angle=metal', '--ignore-gpu-blocklist', '--enable-precise-memory-info', '--autoplay-policy=no-user-gesture-required'];
@@ -78,7 +81,8 @@ page.on('pageerror', (e) => errs.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push(m.text()); });
 
 /* The fake players, run in the page.  `kind` picks the policy; the sim returns what happened. */
-const SIM = async (kind) => {
+const SIM = async (arg) => {
+  const [kind, PHONE_TOUR] = Array.isArray(arg) ? arg : [arg, false];
   const g = window.__guide, W = g.walk, world = window.__scene.world, camera = window.__scene.camera;
   g.reset();
   if (kind === 'intro') g.introReset(); else g.introMark();   // the hello is its own check; elsewhere it has been said
@@ -144,7 +148,8 @@ const SIM = async (kind) => {
   const order = [];
   let spineOff = 0;
   const kSpine = [A.tour.findIndex((l) => l.hear === 'walk1'), A.tour.findIndex((l) => l.hear === 'station')];
-  const WANT = ['konbini', 'han', 'mochi', 'walk1', 'donki', 'walk2', 'station', 'train', 'crossing', 'shrine', 'slowlife'];
+  const WANT = PHONE_TOUR ? ['konbini', 'han', 'mochi', 'donki', 'walk1', 'station', 'train', 'crossing', 'shrine', 'slowlife']      // (the pocket town's order)
+    : ['konbini', 'han', 'mochi', 'walk1', 'donki', 'walk2', 'station', 'train', 'crossing', 'shrine', 'slowlife'];
   const inOrder = (from = 0, to = WANT.length) => { const at = WANT.slice(from, to).map((k) => order.indexOf(k)); return at.every((v, i) => v >= 0 && (i === 0 || v > at[i - 1])); };
   /* The surface (Tan, 2026-10-02: "Hachi's y must always be the true top surface under him"): what is really drawn
    * under the pup, by a ray straight down through the scene's solid meshes (not the platforms his ground is worked out
@@ -935,8 +940,14 @@ const SIM = async (kind) => {
 
 let bad = 0;
 try {
-  await page.goto(`${base}?shots`);
-  await page.waitForFunction(() => window.__ready === true, null, { timeout: 150000, polling: 250 });
+  if (PHONE) {
+    await page.goto(`${base}m.html`);
+    await page.waitForFunction(() => window.__m && window.__guide, null, { timeout: 240000, polling: 500 });
+    await page.evaluate(() => { window.__scene = window.__m; });
+  } else {
+    await page.goto(`${base}?shots`);
+    await page.waitForFunction(() => window.__ready === true, null, { timeout: 150000, polling: 250 });
+  }
 
   if (MEASURE) {
     const res = await page.evaluate(async () => {
@@ -988,7 +999,7 @@ try {
     console.log(loud ? 'pass' : 'FAIL', 'voice', JSON.stringify(voice));
 
     for (const kind of ['tour', 'route', 'crossing', 'intro', 'turnaway', 'wander', 'whistle', 'bedtime', 'tipsy', 'reactions', 'snack', 'after', 'ground'].filter((k) => !ONLY || ONLY.split(',').includes(k))) {
-      const r = await page.evaluate(SIM, kind);
+      const r = await page.evaluate(SIM, [kind, PHONE]);
       if (r.map) { fs.writeFileSync(path.join(out, 'trail.png'), Buffer.from(r.map.split(',')[1], 'base64')); delete r.map; }
       if (r.surface) { fs.writeFileSync(path.join(out, `surface-${kind}.json`), JSON.stringify(r.surface)); for (const k of ['firstUnder', 'firstOver', 'firstInside']) r.surface[k] = r.surface[k].slice(0, 6); }
       const said = await page.evaluate(() => { const l = [...new Set(window.__scene.sound.debug.log.map((e) => e.name).filter((n) => /^dog-|^whistle/.test(n ?? '')))]; window.__scene.sound.debug.log.length = 0; return l; });

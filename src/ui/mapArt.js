@@ -133,7 +133,7 @@ export function paintMap(world) {
   park(trect(L.parking));                          // the photographers' lot, a car park now
 
   /* ---- the river (桜川): banks, walks, water, stairs, stepping stones ---- */
-  {
+  /*@mini if (false) @*//*@@*/{
     band(L.farTop.z0, L.farTop.z1, M.walk);
     band(L.top.z0, L.top.z1, M.walk);
     // the stone revetments, hatched as a map draws a bank
@@ -222,7 +222,7 @@ export function paintMap(world) {
   }
 
   /* ---- 鏡池: its grounds, the granite promenade, the water ---- */
-  {
+  /*@mini if (false) @*//*@@*/{
     box(trect(L.pond.box), M.lawn, 1.2);
     const shore = pondShore().map((v) => tw(v.x, v.y));
     // the promenade: the shore stroked wide with round joins, so its outer edge stays smooth
