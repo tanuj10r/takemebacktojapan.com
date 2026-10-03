@@ -1067,6 +1067,7 @@ export const MOBILE = {
    * guide line in the bottom quarter (mobile/panel.js); turned sideways it asks to be turned back */
   portrait: true,
   portraitTilt: 0.18,
+  overWait: 20,              // s after Hachi reaches the gate before the postcard comes, if he has not settled on his bench first (mobile/shell.js)
   soundRelease: 25,          // m beyond a sound's reach where its decoded copy goes (core/sound.js; 0: never)        // rad: the famous view's pitch, lowered in portrait (mobile/main.js viewPitch)
   route: true,
   /* The mini town (src/mobile/plan.js): the desktop's plan with the block row south of lane 112 taken out;
@@ -1128,8 +1129,9 @@ export const MOBILE = {
    * sharpness is never what pays): what goes is draw distance and far pages.  ?tier=light / ?tier=full by hand. */
   tiers: {
     light: {
-      far: 70, fog: { near: 24, far: 66 }, detail: 24,
-      texLod: { min: 256 * 256, near: 16, far: 22, k: 0.25, store: 0.5, safe: 1.0, least: 8 },
+      // (the pocket town: a little haze, not a wall at 24 m; pages whole to 34 m)
+      far: 130, fog: { near: 45, far: 125 }, detail: 36,
+      texLod: { min: 256 * 256, near: 34, far: 42, k: 0.25, store: 0.5, safe: 1.0, least: 14 },
       store: { behind: -0.5, goods: 34, quadsNear: 15, quadsFar: 17.5, quadsDeep: 3 },
       shadow: { size: 1024, half: 28, every: 2.5 },
       render: { maxDpr: 3, pixels: 2.7e6, minScale: 2, step: 0.25, fpsLow: 40, fpsHigh: 55 },   // (Tan, 2026-10-02: sharp here too; what pays is distance, below)

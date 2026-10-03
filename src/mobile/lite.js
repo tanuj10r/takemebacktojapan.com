@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 import { MOBILE, TOWN, ANIMALS, LAWSON } from '../config.js';
 import { decalAtlas } from '../world/kit/tex.js';
 import { storePages } from '../world/store/pages.js';
@@ -29,9 +30,8 @@ export function liteConfig() {
   // Hachi's distance fields kept grown at once (2.6 MB each)
   ANIMALS.guide.fields = 3;
   // POCKET: the plain local trains only (the Pokémon wrap's 4096 x 1024 page is 21 MB on the GPU)
-  /* BUDGET: one train set (Tan): the plain local, both ways.  The two runs never stand in sight together (the next
-   * comes in as the last has gone into the fog), so they share the one set (line/emu.js `lend`, phone build only):
-   * a second is built only if both are ever within 300 m of the platform at once. */
+  /* the plain local, both ways: a set for each track, both built at load (line/emu.js primeSecond: in the pocket
+   * town the two runs stand at the platform together) */
   TOWN.rail.trains = ['box'];
   /* Hachi a size up (Tan, 2026-10-03: "way too small while playing the mobile Pocket Town"): on a phone's small
    * picture the desktop's 24 cm pup was a speck a few metres ahead; 1.3 is a grown shiba's ~31 cm */
@@ -615,6 +615,43 @@ export function releaseCanvases(scene, renderer) {
     // (a released page drawn on again would upload the 1 x 1: said loudly, never silently blank)
     Object.defineProperty(t, 'needsUpdate', { configurable: true, set(v) { if (v === true) console.error(`releaseCanvases: ${t.name || t.uuid} was drawn on after its canvas went`); } });
   };
+  /* A safety net (Tan, 2026-10-04: a train built in play came out with no sides): a texture made later from a page
+   * whose canvas has gone (a clone with its own wrap or repeat uploads again from the canvas) gets the picture
+   * back first, read from the GPU texture that still holds it, at its whole size; the sweep lets it go again once
+   * the new texture is up too. */
+  let reader = null;
+  const restore = (src) => {
+    const t0 = src.__t0, w = t0.__w, h = t0.__h;
+    reader ??= new FullScreenQuad(new THREE.RawShaderMaterial({
+      glslVersion: THREE.GLSL3, uniforms: { map: { value: null }, srgb: { value: 0 } },
+      vertexShader: 'in vec3 position; void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: `precision highp float; uniform highp sampler2D map; uniform int srgb; out highp vec4 o;
+        vec3 enc(vec3 c) { return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
+        void main() { vec4 c = texelFetch(map, ivec2(gl_FragCoord.xy), 0); o = vec4(srgb == 1 ? enc(c.rgb) : c.rgb, c.a); }`,
+      depthTest: false, depthWrite: false, blending: THREE.NoBlending, toneMapped: false,
+    }));
+    const rt = new THREE.WebGLRenderTarget(w, h, { depthBuffer: false, type: THREE.UnsignedByteType, colorSpace: THREE.NoColorSpace });
+    reader.material.uniforms.map.value = t0;
+    reader.material.uniforms.srgb.value = t0.colorSpace === THREE.SRGBColorSpace ? 1 : 0;
+    const was = renderer.getRenderTarget();
+    renderer.setRenderTarget(rt); reader.render(renderer); renderer.setRenderTarget(was);
+    const buf = new Uint8ClampedArray(w * h * 4);
+    renderer.readRenderTargetPixels(rt, 0, 0, w, h, buf);
+    rt.dispose(); reader.material.uniforms.map.value = null;
+    // (uploaded flipped, the GPU's first row is the canvas's last)
+    const img = new ImageData(w, h);
+    for (let y = 0; y < h; y++) img.data.set(buf.subarray((t0.flipY ? h - 1 - y : y) * w * 4, ((t0.flipY ? h - 1 - y : y) + 1) * w * 4), y * w * 4);
+    const cv = src.data;
+    cv.width = w; cv.height = h;
+    cv.getContext('2d').putImageData(img, 0, 0);
+    src.__released = false;
+    out.restored = (out.restored ?? 0) + 1;
+  };
+  const copy = THREE.Texture.prototype.copy;
+  THREE.Texture.prototype.copy = function (from) {
+    if (from.source?.__released === true) restore(from.source);
+    return copy.call(this, from);
+  };
   let clock = 0;
   return {
     out,
@@ -632,7 +669,7 @@ export function releaseCanvases(scene, renderer) {
         if (!ready) { out.pending++; continue; }
         out.released++; out.releasedMB += (img.width * img.height * 4) / 1048576;
         for (const t of set) { t.__w = img.width; t.__h = img.height; shut(t); }
-        src.__released = true;
+        src.__released = true; src.__t0 = [...set][0];
         img.width = 1; img.height = 1;
         out.any = true;
       }

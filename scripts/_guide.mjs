@@ -148,7 +148,7 @@ const SIM = async (arg) => {
   const order = [];
   let spineOff = 0;
   const kSpine = [A.tour.findIndex((l) => l.hear === 'walk1'), A.tour.findIndex((l) => l.hear === 'station')];
-  const WANT = PHONE_TOUR ? ['konbini', 'donki', 'walk1', 'station', 'train', 'crossing', 'shrine', 'slowlife']      // (the pocket town's order: no Han, no ぺったん堂, no home)
+  const WANT = PHONE_TOUR ? ['konbini', 'donki', 'walk1', 'station', 'train', 'shrine', 'slowlife']      // (the pocket town's order: no Han, no ぺったん堂, no home, no crossing detour)
     : ['konbini', 'han', 'mochi', 'walk1', 'donki', 'walk2', 'station', 'train', 'crossing', 'shrine', 'slowlife'];
   const inOrder = (from = 0, to = WANT.length) => { const at = WANT.slice(from, to).map((k) => order.indexOf(k)); return at.every((v, i) => v >= 0 && (i === 0 || v > at[i - 1])); };
   /* The surface (Tan, 2026-10-02: "Hachi's y must always be the true top surface under him"): what is really drawn

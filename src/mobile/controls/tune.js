@@ -33,9 +33,9 @@ const DEFAULTS = {
     level: 0.6,          // 1/s: walking, the view eases back toward level (nothing else on the stick looks up or down)
     zone: 0.46,          // the left part of the screen a thumb can land in to walk (0..1 of the width)
     top: 0.2,            // ... below this part of the height (the top is the map's and the labels')
-    radius: 50,          // px: a full push
-    base: 132,           // px: the base's disc
-    knob: 58,            // px: the thumb's
+    radius: 44,          // px: a full push
+    base: 112,           // px: the base's disc (it fits the panel's square, 116: Tan, 2026-10-04, it rode over the guide line)
+    knob: 52,            // px: the thumb's
     dead: 0.12,          // of the radius: no walking within it
     follow: 1.25,        // past this many radii the base trails the thumb
     rest: [92, 96],      // px from the left and bottom safe edges: where the base rests

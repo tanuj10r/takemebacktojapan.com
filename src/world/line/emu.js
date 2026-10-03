@@ -6,7 +6,6 @@ import { RAIL_TOP } from '../railway.js';
 import { mergeStatic } from '../merge.js';
 import { CONTACT_Y } from './track.js';
 import { RIDE } from '../../data/town.js';
-/*@mini import { TOWN } from '../../config.js'; @*//*@@*/
 import { destTex, runNoTex, carNumberTex, doorLcdTex, carAdsTex, CAR_AD_CELLS, prioritySticker, weakSticker, pokeArtTex, POKE_ART } from './tex.js';
 
 /* ------------------------------------------------------------------ *
@@ -938,9 +937,10 @@ export function makeFleet(ctx, { slots = 2, cars = 2 } = {}) {
         if (cur?.type === type) return cur;
         let want = type;
         const other = claimed.get(type);
-        if (other !== undefined && other !== i/*@mini && !slotList[other].lend() @*//*@@*/) {
+        if (other !== undefined && other !== i) {
           // the other slot still holds this type (a one-type rotation): a second set of it
-          want = `${type}#${i}`;
+          // (a spare already built and free, whichever slot it was made for: the phone builds it at load)
+          want = [...built.keys()].find((k) => k !== type && k.split('#')[0] === type && !claimed.has(k)) ?? `${type}#${i}`;
           if (!built.has(want)) built.set(want, buildEmu(ctx, { cars, type, seed: 2300 + i }));
         }
         if (cur) { cur.group.visible = false; claimed.delete(key); }
@@ -951,11 +951,6 @@ export function makeFleet(ctx, { slots = 2, cars = 2 } = {}) {
         cur.setDoors(0);
         return cur;
       },
-      /*@mini lend() {
-        if (!cur || (cur.group.visible && Math.abs(cur.group.position.x - TOWN.station.stopX) < 300)) return false;
-        cur.group.visible = false; claimed.delete(key); cur = null; key = null;
-        return true;
-      }, @*//*@@*/
       setDoors(t) { cur?.setDoors(t); },
       get doors() { return cur?.doors ?? 0; },
       setDest(dir) { cur?.setDest(dir); },
@@ -969,7 +964,11 @@ export function makeFleet(ctx, { slots = 2, cars = 2 } = {}) {
     slots: slotList,
     types: Object.keys(TYPES),
     /** Build these types now (at load), so no run's first appearance costs a frame (~60 ms a type). */
-    prime(types) { for (const t of types) if (TYPES[t]) get(t).group.visible = false; },
+    prime(types) { for (const t of types) if (TYPES[t]) get(t).group.visible = false; /*@mini this.primeSecond(types); @*//*@@*/ },
+    /* (the pocket town, Tan 2026-10-04: "transparent trains with just doors"; the two runs stand at the platform
+     * together there, so each track has its own set from the start, built at load like the first: a set built in
+     * play came after the phone had let its pages' canvases go, mobile/lite.js) */
+    primeSecond(types) { for (const t of types) if (TYPES[t] && !built.has(`${t}#1`)) { built.set(`${t}#1`, buildEmu(ctx, { cars, type: t, seed: 2301 })); built.get(`${t}#1`).group.visible = false; } },
     setNight(k) { night = k; for (const s of built.values()) s.setNight(k); },
     /** Dev: what is built and what each slot shows. */
     get state() { return { built: [...built.keys()], showing: slotList.map((s) => s.type) }; },

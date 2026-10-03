@@ -174,7 +174,12 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
       postcard.show(true, toured);
     }).catch(() => {});
   }
+  /* (Tan, 2026-10-04: "after the tour ends, the postcard doesn't pop up") the panel says the tour is over the moment he
+   * reaches the gate, but his card waited for him to settle on its bench, which he may never do with you elsewhere:
+   * `overWait` s after the gate it comes wherever you are */
+  let overT = 0;
   function watchPostcard(dt) {
+    if (!postcardCame && !postcardSeen && postcardDue < 0 && dt > 0 && GUIDE.tourInfo?.()?.over && (overT += dt) > MOBILE.overWait) GUIDE.onTourEnd?.();
     if (postcardDue < 0 || dt <= 0 || !postcard) return;
     postcardDue = Math.max(0, postcardDue - dt);
     // never over something that holds you: the konbini's scene, the whole map, Han's drive, a staged view
@@ -258,8 +263,7 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
   }
   const touch = createTouch(player, {
     surface: panel ? document.documentElement : canvas, isPlaying: () => player.locked && !minimap.fullOpen,
-    onStick: panel ? () => panel.stopFollow() : null,
-    onDrag: panel ? () => panel.stopFollow() : null,
+    // (Walk with Hachi goes on through a look and a forward thumb; the panel ends it for a pull back or across)
   });
   if (panel) panel.onScheme = () => touch.setPlaying(player.locked);      // (the stick shows in the panel once placed)
 

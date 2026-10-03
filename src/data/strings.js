@@ -237,7 +237,7 @@ export const MOBILE_STRINGS = {
   ready: 'Almost there…',
   /* the start card: one line, and a small second one */
   tagline: 'A pocket-sized Japan. Best with sound on 🎧',
-  desktop: 'Full town on desktop',
+  desktop: 'Full experience on Desktop',   // (Tan, 2026-10-04)
   /* (an iPhone in a browser tab: the one way past the URL bar) */
   homeScreen: 'Full screen: Share, then Add to Home Screen',
   rotate: 'Turn your phone sideways for a wider view',
@@ -254,6 +254,8 @@ export const MOBILE_STRINGS = {
   /* the portrait phone's bottom panel (mobile/panel.js) */
   panel: {
     walkWithHachi: 'Walk with Hachi', walkSub: 'he leads, you look',
+    // (Tan, 2026-10-04: "shown throughout the game, subtle": the panel's foot, under the controls)
+    desktopFoot: 'Full experience on Desktop · <b>takemebacktojapan.com</b>',
     stopFollowing: 'Stop here', followingSub: 'walking behind Hachi',
     heading: (place) => `Hachi is heading to ${place}`, stop: (k, n) => `Stop ${k} of ${n}`, next: 'the next stop',
     overTitle: 'You’ve seen the whole town', overLine: 'Wander as you like, or take the tour again',

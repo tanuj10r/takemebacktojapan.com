@@ -108,7 +108,7 @@ WORLD.bounds.z0 = 2 * main - TOWN.bounds.z1; WORLD.bounds.z1 = 2 * main - TOWN.b
 
 /* ---- Hachi's tour over the pocket town (world frame; Tan, 2026-10-03: no Han, no ぺったん堂, no home).  From the
  * view: the konbini, east along the store's pavement to the shopping lane: ドンペン堂, its zebra (piyo), the plaza and
- * the station, the train; up the station lane to the level crossing's barrier and back; down the lane, west along
+ * the station, the train; back down the lane, west along
  * the store's pavement to the shrine and the bench over the paddies; over the main road's zebra (kakko) and the gate
  * road's (piyo) to the Deer Park gate, where he naps.  Every sound place is passed within earshot. ---- */
 ANIMALS.guide.tour = [
@@ -124,10 +124,8 @@ ANIMALS.guide.tour = [
   { x: 51, z: W(-115.5) },                    // the foot of the station's steps
   { id: 'train', x: 53, z: W(-129.2) },       // platform 1: the train's listening spot
   { x: 51, z: W(-115.5) },
-  { x: 68, z: W(-110) },                      // through the plaza
-  { x: 80, z: W(-116) },                      // onto the station lane
-  { x: 80, z: W(-127.6), cross: true, hear: 'crossing' },   // at the barrier (he waits there while it is shut): the bells, the train going by
-  { x: 68, z: W(-110) },                      // back through the plaza
+  /* (no detour to the level crossing: Tan, 2026-10-04, "not necessary, as we've removed his house"; its bells are
+   * still heard from the plaza's corner and the platform's end when a train goes over) */
   { x: 50, z: -22 },
   { x: 50, z: 9.5 },                          // down the lane to the main road
   { x: 20, z: 9.5 },                          // west along the store's pavement
@@ -145,8 +143,6 @@ ANIMALS.guide.tour = [
 ];
 ANIMALS.guide.hear = {
   walk0: [-35, 13.8, 14], walk1: [50, -18.3, 14], walk3: [-30, 23.7, 14], donki: [55.9, -1.7, 12],
-  station: [51, W(-125.5), 14], crossing: [80, W(-134.3), 12], shrine: [-51, -2.2, 14],
+  station: [51, W(-125.5), 14], shrine: [-51, -2.2, 14],
 };
-/* (the crossing: he turns back at its barrier now (no home past it), so you hear it from up to 12 m: its bells are
- * whole within 10 m and carry to 45, config.js SOUND.crossingBells) */
 ANIMALS.guide.nap = [TOWN.land.gateBench.x, TOWN.land.gateBench.z + 0.75];

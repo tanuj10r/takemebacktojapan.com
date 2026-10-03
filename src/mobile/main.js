@@ -56,7 +56,11 @@ const inApp = /CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|Instagram|FBAN|FBAV|FB_IAB|FBIOS|L
   || (ios && !/Safari\//.test(ua));
 const bigIphone = Math.max(screen.width, screen.height) >= 852;
 let lostBefore = false;
-try { lostBefore = localStorage.getItem('takemebacktojapan-lost') === '1'; } catch { /* optional */ }
+/* (Tan, 2026-10-04: "the buildings nearby are grayed out and blurry until I walk very close") the mark was for good: one
+ * lost context on an old build kept a phone on the light tier (fog from 24 m, quarter pages past 22 m) ever after.
+ * It is now this build's: a new build tries the full tier again. */
+const BUILD = new URL(import.meta.url).pathname;
+try { lostBefore = localStorage.getItem('takemebacktojapan-lost') === BUILD; } catch { /* optional */ }
 /* (Tan, 2026-10-02, on Chrome on an iPhone 15: "details near the eye are blurry... this is not what is to be
  * compromised") Chrome and the in-app browsers on a big iPhone are the same WebKit on the same 6 GB: the full tier
  * there too.  Only a context lost here before still sends it to the light one. */
@@ -95,7 +99,7 @@ canvas.addEventListener('webglcontextlost', (e) => {
   contextLost = true;
   diag.stage(`CONTEXT LOST (at ${diag.stageName})`);
   // this device lost it once: from the next load on, the light tier
-  try { localStorage.setItem('takemebacktojapan-lost', '1'); } catch { /* optional */ }
+  try { localStorage.setItem('takemebacktojapan-lost', BUILD); } catch { /* optional */ }
   shell?.setLost(true);                                   // SHELL: hush, pause, no waking
   showGate('lost');
 });

@@ -51,15 +51,20 @@
   #view { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; height: 100dvh; touch-action: none; }
   /* the portrait phone (Tan, 2026-10-03; config.js MOBILE.portrait, mobile/panel.js): the town in the top three quarters,
    * the panel in the bottom quarter; the play screen's own parts move up out of the panel's way */
-  body.pui #view { height: 75dvh; bottom: auto; }
+  /* (Tan, 2026-10-04: "the buttons, text and toggle overlap") the panel is a fixed height (its rows need ~200 px on any
+   * phone; a quarter of a short screen was too little) and the town takes the rest; --app-h is the screen's height
+   * (the home-screen app, iOS: there 100dvh is a status bar short and a band was left under the panel; mobile/panel.js) */
+  :root { --pp-h: calc(206px + var(--safe-b)); --app-h: 100dvh; --view-h: calc(var(--app-h) - var(--pp-h)); }
+  body.pui #view { height: var(--view-h); bottom: auto; }
   body.pui .stick, body.pui .knob { z-index: 7; }      /* (the two-thumbs scheme's stick sits in the panel) */
   body.pui .stick b { top: auto; bottom: -2px; transform: translate(-50%, 0); padding: 2px 8px; font-size: 9.5px; }   /* (its label inside the panel, not under its edge) */
   body.pui .mh-act, body.pui .mh-top [data-b="whistle"], body.pui .mh-top [data-b="pause"] { display: none !important; }
-  body.pui .mh-cross { top: 37.5dvh; }
-  body.pui .mh-menu { bottom: calc(25dvh + 10px) !important; }
-  body.pui .look-hint { bottom: calc(25dvh + 12px) !important; left: 50% !important; right: auto !important; transform: translateX(-50%); }
-  body.pui #hachi-card { bottom: calc(25dvh + 18px) !important; }
-  body.pui .train-wait { bottom: calc(25dvh + 12px) !important; }
+  body.pui .mh-cross { top: calc(var(--view-h) / 2); }
+  /* (the play screen's own cards sit on the picture's foot: placed from the top, raised by their own height) */
+  body.pui .mh-menu { top: calc(var(--view-h) - 10px) !important; bottom: auto !important; translate: 0 -100%; }
+  body.pui .look-hint { top: calc(var(--view-h) - 12px) !important; bottom: auto !important; left: 50% !important; right: auto !important; transform: translateX(-50%); translate: 0 -100%; }
+  body.pui #hachi-card { top: calc(var(--view-h) - 18px) !important; bottom: auto !important; translate: 0 -100%; }
+  body.pui .train-wait { top: calc(var(--view-h) - 12px) !important; bottom: auto !important; translate: 0 -100%; }
   .pp-turn { display: none; position: fixed; inset: 0; z-index: 60; place-items: center; text-align: center; background: #2c2346; color: #fbf6f0; font-weight: 700; font-size: 16px; }
   .pp-turn svg { width: 64px; height: 64px; margin-bottom: 10px; }
   @media (orientation: landscape) { body.pui .pp-turn { display: grid; } }

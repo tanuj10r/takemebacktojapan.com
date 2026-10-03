@@ -180,7 +180,7 @@ export class TouchPlayer extends Player {
       P.x += (this.stick.x - P.x) * e; P.y += (this.stick.y - P.y) * e;
       fwd = -P.y; side = P.x;
       push = Math.min(1, Math.hypot(P.x, P.y));
-      if (S.pressWalk && this.stick.held) {
+      if (S.pressWalk && this.stick.held && !this.steer) {
         // (Tan, 2026-10-03) a thumb on the stick walks you on; slid up faster (into a run), pulled down slower then back
         const f = Math.max(-1, Math.min(1, S.pressBase - P.y));
         fwd = f; side = P.x;
@@ -205,7 +205,8 @@ export class TouchPlayer extends Player {
       if (k.has('KeyA') || k.has('ArrowLeft')) ks -= 1;
       if (kf || ks) { fwd = kf; side = ks; push = 1; keyed = true; keyRun = k.has('ShiftLeft') || k.has('ShiftRight'); }
       else if (this.holdWalk) { fwd = 1; side = 0; push = 0.85; }
-      else if (this.steer && push === 0) {
+      else if (this.steer && (push === 0 || this.stick.held)) {
+        // walking with Hachi: his way; a thumb on the stick slid up quickens it into a run (the edge, below)
         const s = this.steer, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
         fwd = -(s.x * sn + s.z * c); side = s.x * c - s.z * sn; push = 0.85;
       }

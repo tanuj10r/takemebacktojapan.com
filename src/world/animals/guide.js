@@ -1679,6 +1679,8 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
     return true;
   };
   GUIDE.again = again;
+  /** The phone's Walk with Hachi: the place you are at has been had; on to the next (he lingers until you come away). */
+  GUIDE.moveOn = () => { if (G.state !== 'linger') return false; G.act = null; nextOrNap(); return true; };
   /** Is the tour on offer again: it is yours after the tour (or asleep on its bench as you stand by it), near, and you
    * are looking at it? */
   GUIDE.offer = () => W.built && (G.state === 'pal' || (G.state === 'nap' && G.bed?.phase === 'sleep')) && G.speed < 0.5
