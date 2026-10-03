@@ -56,7 +56,7 @@ const DEFAULTS = {
   goto: {
     hachiPx: 56,         // a tap this near Hachi on the screen (CSS px) walks you up to him
     spotPx: 64,          // ... this near the ring of something to do, into its ring
-    snap: 7,             // a tap on the ground or a building this near (m) something to do walks you into its ring
+    snap: 4,             // a tap on the ground or a building this near (m) something to do walks you into its ring
     reach: 90,           // m: a tap farther than this (the sky, the far hills) does nothing
     arrive: 0.45,        // m: there
     ahead: 10,           // cells down the way to look for a point in plain sight to steer at

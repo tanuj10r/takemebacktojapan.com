@@ -74,7 +74,8 @@ export function createGoTo({ scene, camera, player, world, spots = () => [] }) {
     let best = null, bd = G.spotPx;
     for (const e of spots()) {
       if (e.kind !== 'engage' || e.hidden) continue;
-      if (Math.hypot(e.x - P.x, e.z - P.z) > 70) continue;
+      const dp = Math.hypot(e.x - P.x, e.z - P.z);
+      if (dp > 70 || dp < 3) continue;      // (not the ring you stand in)
       const p = screen(e.x, world.heightAt(e.x, e.z) + 0.2, e.z);
       if (!p) continue;
       const d = Math.hypot(p.x - sx, p.y - sy);
@@ -95,13 +96,14 @@ export function createGoTo({ scene, camera, player, world, spots = () => [] }) {
       if (wall) { hit = last ?? { x, z }; break; }
       last = { x, z };
     }
+    api.last = { hit };
     if (!hit) return false;
     // a thing to do close by takes the walk into its ring (a tap on NIPPON's front walks you to its door)
     let near = null, nd = G.snap;
     for (const e of spots()) {
       if (e.kind !== 'engage' || e.hidden) continue;
       const dd = Math.hypot(e.x - hit.x, e.z - hit.z);
-      if (dd < nd) { nd = dd; near = e; }
+      if (dd < nd && Math.hypot(e.x - P.x, e.z - P.z) > 3) { nd = dd; near = e; }
     }
     if (near) return go(near.x, near.z, { look: near.look ?? null });
     return go(hit.x, hit.z);
@@ -160,5 +162,6 @@ export function createGoTo({ scene, camera, player, world, spots = () => [] }) {
     } else if (face && !quiet) face = null;
   }
 
-  return { tap, go, cancel, update, get walking() { return !!goal; }, ring };
+  const api = { tap, go, cancel, update, get walking() { return !!goal; }, ring, last: null };
+  return api;
 }
