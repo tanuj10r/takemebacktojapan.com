@@ -62,7 +62,7 @@ try {
 
   // one stick on the right (Tan, 2026-10-03): up walks on, across turns; a drag elsewhere looks
   const s0 = await state();
-  const jx = vp.width * 0.84, jy = vp.height * 0.72;
+  const [jx, jy] = await page.evaluate(() => window.__m.touch.state.rest);      // (the stick is fixed: Tan, 2026-10-03)
   await touch('touchStart', [[jx, jy, 1]]);
   for (let k = 1; k <= 6; k++) { await touch('touchMove', [[jx, jy - k * 9, 1]]); await wait(30); }
   await wait(2500);

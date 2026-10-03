@@ -361,8 +361,14 @@ try {
       const g2 = await gait();
       await finger.up(1);
       check(`${way}: the stick rests bottom right`, sx > W * 0.6 && sy > H * 0.55, { sx, sy });
+      // fixed (Tan): a thumb on it pushes the knob; the base never moves, and a drag elsewhere on the right looks
+      await finger.down(1, sx + 20, sy - 10); await finger.move(1, sx + 90, sy - 80);
+      await page.waitForTimeout(150);
+      const held = await page.evaluate(() => window.__m.touch.state.at);
+      await finger.up(1);
+      check(`${way}: the stick stays where it rests`, Math.hypot(held[0] - sx, held[1] - sy) < 1, { held, rest: [sx, sy] });
       check(`${way}: up on the stick walks on`, Math.hypot(g1.x - g0.x, g1.z - g0.z) > 1.5, { from: [g0.x, g0.z], to: [g1.x, g1.z] });
-      check(`${way}: across turns you, with no sidestep`, Math.abs(g2.yaw - g1.yaw) > 0.4 && Math.hypot(g2.x - g1.x, g2.z - g1.z) < 2.5,      // (the walk winding down as the push goes across) { yaw: [g1.yaw, g2.yaw] });
+      check(`${way}: across turns you, with no sidestep`, Math.abs(g2.yaw - g1.yaw) > 0.4 && Math.hypot(g2.x - g1.x, g2.z - g1.z) < 2.5, { yaw: [g1.yaw, g2.yaw] });      // (2.5 m: the walk winding down as the push goes across)
       check(`${way}: the context button sits on the left, clear of the stick`, await page.evaluate(() => { const r = document.querySelector('.mh-act').getBoundingClientRect(); return r.left < innerWidth * 0.4; }));
       await P.stand(0, 14, 0, -40);
       // the look: a slow 200 px drag, a quick one, up and down; from the right thumb's side

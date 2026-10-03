@@ -95,14 +95,17 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
     if (on) home();
   };
 
-  const inStickZone = (x, y) => (right ? x > vw() * (1 - S.zone) : x < vw() * S.zone) && y > vh() * S.top;
+  const inStickZone = (x, y) => {
+    if (S.fixed) { const [hx, hy] = rest(); return Math.hypot(x - hx, y - hy) < (B / 2) * S.grab; }
+    return (right ? x > vw() * (1 - S.zone) : x < vw() * S.zone) && y > vh() * S.top;
+  };
 
   function stickMove(x, y) {
     let dx = x - cx, dy = y - cy;
     let d = Math.hypot(dx, dy);
     // past `follow` radii the base comes along behind the thumb
     const F = R * S.follow;
-    if (d > F) { cx += dx * (1 - F / d); cy += dy * (1 - F / d); dx = x - cx; dy = y - cy; d = F; place(base, cx, cy); }
+    if (d > F && !S.fixed) { cx += dx * (1 - F / d); cy += dy * (1 - F / d); dx = x - cx; dy = y - cy; d = F; place(base, cx, cy); }
     const k = Math.min(1, d / R);
     const kx = d > R ? dx * R / d : dx, ky = d > R ? dy * R / d : dy;
     place(knob, cx + kx, cy + ky);
@@ -118,9 +121,12 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (!S.off && stickId === null && e.pointerType !== 'mouse' && inStickZone(e.clientX, e.clientY)) {
       stickId = e.pointerId;
-      // the base comes to the thumb (kept whole on the screen)
-      cx = Math.min(Math.max(e.clientX, B / 2 + 4), vw() - B / 2 - 4);
-      cy = Math.min(Math.max(e.clientY, B / 2 + 4), vh() - B / 2 - 4);
+      // the base comes to the thumb (kept whole on the screen); a fixed stick stays where it rests
+      if (S.fixed) [cx, cy] = rest();
+      else {
+        cx = Math.min(Math.max(e.clientX, B / 2 + 4), vw() - B / 2 - 4);
+        cy = Math.min(Math.max(e.clientY, B / 2 + 4), vh() - B / 2 - 4);
+      }
       for (const el of [base, knob]) { el.style.transition = 'opacity .1s ease'; el.classList.add('on'); }
       place(base, cx, cy);
       stickMove(e.clientX, e.clientY);

@@ -24,6 +24,8 @@ const DEFAULTS = {
     /* (Tan, 2026-10-03: "the entire navigation... with just one joystick on the right") one stick, under the right
      * thumb: up walks on, down steps back, left and right turn you (no sidestep) */
     side: 'right',
+    fixed: true,         // (Tan, 2026-10-03: "can't it be in a fixed position?") the base never moves; a thumb within `grab` radii of it takes it
+    grab: 1.35,
     steer: true,
     turn: 1.9,           // rad/s at a full push across
     turnCurve: 1.6,      // the push across to the turn (more is gentler near the middle: a nudge is a small turn)
