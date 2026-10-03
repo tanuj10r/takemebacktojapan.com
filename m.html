@@ -17,6 +17,7 @@
 <link rel="icon" href="favicon.ico" sizes="48x48" />
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="manifest.webmanifest" />   <!-- (Add to Home Screen opens it full screen: Tan, 2026-10-03) -->
 <!-- the key art (scripts/keyart.mjs): the banner on its side, the portrait crop upright -->
 <link rel="preload" as="image" href="keyart-1280.webp" imagesrcset="keyart-1280.webp 1280w, keyart-1920.webp 1920w" imagesizes="100vw" type="image/webp" media="(orientation: landscape)" fetchpriority="high" />
 <link rel="preload" as="font" href="title.woff2" type="font/woff2" crossorigin />
@@ -81,6 +82,9 @@
   .url { margin: 10px 0 0; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--ink-soft); }
   .url a { color: inherit; text-underline-offset: 2px; }
   .url i { font-style: normal; margin: 0 .5em; opacity: .6; }
+  /* the Home Screen hint (Tan, 2026-10-03: the URL bar takes room; an icon on the Home Screen opens full screen) */
+  .a2hs { display: none; margin: 8px 0 0; font-size: 11.5px; line-height: 1.35; font-weight: 600; color: var(--ink-soft); text-align: center; }
+  .is-ios:not(.standalone) .a2hs { display: block; }
 
   /* ---------- Made by Tan: the row on the start and pause cards (src/ui/maker.js) ---------- */
 %MAKER:css%
@@ -283,6 +287,7 @@
     if (!gl) d.classList.add('gate-nogl');
     else { var x = gl.getExtension('WEBGL_lose_context'); if (x) x.loseContext(); }
     if (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) d.classList.add('is-ios');
+    if (navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches)) d.classList.add('standalone');
     /* DataFast analytics (Tan, 2026-10-02: phones are counted now that the phone build is live): the live site
      * only, as on the desktop page; staging and local testing are never counted. */
     if (/(^|\.)takemebacktojapan\.com$/.test(location.hostname)) {
@@ -321,6 +326,7 @@
         <button class="btn" type="button" id="start">%S:m.start%</button>
       </div>
       %MAKER:row:start_card%
+      <p class="a2hs">%S:m.homeScreen%</p>
       <p class="url">%S:m.desktop%<i>·</i><a href="credits.html" target="_blank" rel="noopener">%S:credits%</a></p>
     </section>
   </div>

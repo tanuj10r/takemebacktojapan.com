@@ -9,6 +9,7 @@ import { STRINGS, MOBILE_STRINGS as M } from '../data/strings.js';
 import { VOLUME_STEPS, DEFAULT_VOLUME, volumeGain, MAKER } from '../config.js';
 import { TouchPlayer } from './player.js';
 import { createTouch } from './touch.js';
+import { createGoTo } from './controls/goto.js';
 import { createMobileHud } from './hud.js';
 import { pickAction, actionWords } from './controls/spots.js';
 import { watchMediaElements, unlockAudio, audioState, watchInterruptions, wakeAudio } from './audio.js';
@@ -76,7 +77,7 @@ const VOLUME_KEY = 'takemebacktojapan-volume';
  * @param onTime           () => the time tile was tapped (main.js changes the light and calls shell.setTime(name))
  * @param onRestart        () => "Back to the start" (main.js stands you on the famous view; the shell resumes)
  */
-export function createShell({ canvas, camera, world, held = () => false, famous = () => false, onTime = null, onRestart = null } = {}) {
+export function createShell({ canvas, camera, world, scene = null, held = () => false, famous = () => false, onTime = null, onRestart = null } = {}) {
   const shop = world.lawson?.shop ?? null;
   const player = new TouchPlayer(camera, canvas, world);
 
@@ -141,7 +142,14 @@ export function createShell({ canvas, camera, world, held = () => false, famous 
   fullmap?.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!minimap.fullOpen || performance.now() - mapAt < 400) return;
-    wake(); toggleMap(false);
+    wake();
+    // a tap on the sheet walks you there (into the ring of what is done there, if one is near); off it, it closes
+    const at = minimap.toWorld(e.clientX, e.clientY);
+    toggleMap(false);
+    if (!at) return;
+    let best = null, bd = 10;
+    for (const s of spotList()) { if (s.kind !== 'engage' || s.hidden) continue; const d = Math.hypot(s.x - at.x, s.z - at.z); if (d < bd) { bd = d; best = s; } }
+    goTo.go(best ? best.x : at.x, best ? best.z : at.z);
   });
 
   /* ---- the postcard (ui/postcard.js, the desktop's): from the pause card, and by itself when Hachi's tour is over ---- */
@@ -243,7 +251,14 @@ export function createShell({ canvas, camera, world, held = () => false, famous 
   });
 
   /* ---- touch; playing or paused ---- */
-  const touch = createTouch(player, { surface: canvas, isPlaying: () => player.locked && !minimap.fullOpen });
+  /* tap to walk (Tan, 2026-10-03: tap where you want to go, drag to look): controls/goto.js */
+  const spotList = () => world.experiences.list.concat(world.lawson?.experiences?.list ?? []);
+  const goTo = createGoTo({ scene: scene ?? camera.parent ?? world.root, camera, player, world, spots: spotList });
+  const touch = createTouch(player, {
+    surface: canvas, isPlaying: () => player.locked && !minimap.fullOpen,
+    onTap: (x, y) => { if (!shop?.busy && !held() && goTo.tap(x, y)) document.querySelector('.look-hint')?.classList.add('used'); },
+    onDrag: () => goTo.cancel(),
+  });
   player.onLockChange = (locked) => {
     if (!locked && minimap.fullOpen) { minimap.setFull(false); player.suspended = false; hud.setMapOpen(false); }
     hud.setPlaying(locked);
@@ -286,7 +301,7 @@ export function createShell({ canvas, camera, world, held = () => false, famous 
 
   let menuShown = null, lastW = 0, lastH = 0;
   const api = {
-    player, hud, sound, touch, minimap, labels,
+    player, hud, sound, touch, minimap, labels, goTo,
     /** the postcard has been up this page load (the tour is offered again only after it; the checks set it) */
     get postcardSeen() { return postcardSeen; }, set postcardSeen(v) { postcardSeen = !!v; },
     /** main.js's: (locked) => {} when play starts or stops; () => {} once, at Start. */
@@ -314,6 +329,7 @@ export function createShell({ canvas, camera, world, held = () => false, famous 
      * context button offers, the konbini's chips, the countdown, the postcard.  Returns what the button is on.
      */
     update(dt, { inStore = false } = {}) {
+      goTo.update(dt);
       const menu = !player.locked;
       if (menu !== menuShown) { menuShown = menu; sound.setMenu(menu); document.body.classList.toggle('game-paused', menu); }
       watchPostcard(dt);

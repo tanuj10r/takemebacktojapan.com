@@ -238,6 +238,8 @@ export const MOBILE_STRINGS = {
   /* the start card: one line, and a small second one */
   tagline: 'A pocket-sized Japan. Best with sound on 🎧',
   desktop: 'Full town on desktop',
+  /* (an iPhone in a browser tab: the one way past the URL bar) */
+  homeScreen: 'Full screen: Share, then Add to Home Screen',
   rotate: 'Turn your phone sideways for a wider view',
   soundBack: 'Tap to bring the sound back',
   paused: 'Paused',
@@ -248,8 +250,8 @@ export const MOBILE_STRINGS = {
   buttons: { hachi: 'Hachi', time: 'Time', pause: 'Pause', map: 'Map' },
   aria: { hachi: 'Whistle for Hachi', time: 'Change the time of day', pause: 'Pause', map: 'Open the map', act: 'Interact' },
   /* until each has been done once */
-  hints: { walk: 'Walk', look: 'Drag to look' },
-  closeMap: 'Tap to close',
+  hints: { walk: 'Walk', look: 'Tap to walk · drag to look' },
+  closeMap: 'Tap a place to go there',
   times: { morning: 'Morning', golden: 'Golden hour', night: 'Night' },
   timeShort: { morning: 'Morning', golden: 'Golden', night: 'Night' },
   /* Hachi's hello, in touch words (animals/guide.js reads STRINGS.hachi) */

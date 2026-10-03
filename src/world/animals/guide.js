@@ -64,6 +64,8 @@ export const GUIDE = {
   bells: { on: false, x: 0, z: 0 },
   /** ぺったん堂's show (world/mochi/): see buildGuide */
   watchShow: () => {}, showCue: () => {}, where: () => null,
+  /** the walk grid, once built (the phone's tap-to-walk goes his ways: mobile/controls/goto.js) */
+  walk: null,
 };
 const INF = Infinity;
 const ENGAGE = A.engage;
@@ -311,7 +313,7 @@ class Walk {
 }
 
 /* ---------------------- a distance field, grown over frames ---------------------- */
-class Field {
+export class Field {
   constructor(W) { this.W = W; this.d = new Float32Array(W.N); this.m = new Float32Array(W.N); this.heap = []; this.ready = false; this.limit = INF; }
   /** Grow from `cells` (distance 0), no farther than `limit` metres. */
   start(cells, limit = INF) {
@@ -1958,7 +1960,7 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
 
   /* ---- what it does ---- */
   function update(dt, cam) {
-    if (!W.built) { W.build(); const c = W.nearest(HOME.x, HOME.z, 3); if (c >= 0) { const q = W.at(c); G.x = q.x; G.z = q.z; } G.y = ground(G.x, G.z); prefetch(); }
+    if (!W.built) { W.build(); GUIDE.walk = W; const c = W.nearest(HOME.x, HOME.z, 3); if (c >= 0) { const q = W.at(c); G.x = q.x; G.z = q.z; } G.y = ground(G.x, G.z); prefetch(); }
     G.t += dt;
     // you: where, how fast, which way
     const jumped = !P.first && Math.hypot(cam.x - P.x, cam.z - P.z) > 3;

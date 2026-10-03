@@ -35,7 +35,7 @@ const CHEVRON = '<svg viewBox="0 0 132 132" aria-hidden="true"><g fill="none" st
 const SWIPE = '<svg viewBox="0 0 48 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
   + '<path d="M9 12h30M14 7l-5 5 5 5M34 7l5 5-5 5"/></g><circle cx="24" cy="12" r="4.2" fill="currentColor"/></svg>';
 
-export function createTouch(player, { surface = document.body, isPlaying = () => true, onTap = null, parent = document.body } = {}) {
+export function createTouch(player, { surface = document.body, isPlaying = () => true, onTap = null, onDrag = null, parent = document.body } = {}) {
   const S = TUNE.stick, L = TUNE.look, TAP = TUNE.tap;
   const R = S.radius, B = S.base, K = S.knob;
   const style = document.createElement('style');
@@ -90,7 +90,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
   const home = () => { const [x, y] = rest(); cx = x; cy = y; place(base, x, y); place(knob, x, y); };
   const show = (on) => {
     shown = on;
-    for (const el of [base, knob, hint]) el.classList.toggle('show', on);
+    for (const el of S.off ? [hint] : [base, knob, hint]) el.classList.toggle('show', on);
     if (on) home();
   };
 
@@ -115,7 +115,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
   surface.addEventListener('pointerdown', (e) => {
     if (!isPlaying()) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (stickId === null && e.pointerType !== 'mouse' && inStickZone(e.clientX, e.clientY)) {
+    if (!S.off && stickId === null && e.pointerType !== 'mouse' && inStickZone(e.clientX, e.clientY)) {
       stickId = e.pointerId;
       // the base comes to the thumb (kept whole on the screen)
       cx = Math.min(Math.max(e.clientX, B / 2 + 4), vw() - B / 2 - 4);
@@ -156,6 +156,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
       if (l.trail.length > 36) l.trail.splice(0, 3);
     }
     if (ax || ay) {
+      if (l.moved > TAP.px) onDrag?.();
       player.look(ax, ay);
       lookedPx += Math.abs(ax) + Math.abs(ay);
       if (lookedPx > 160) hint.classList.add('used');

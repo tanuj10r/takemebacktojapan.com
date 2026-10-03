@@ -1,0 +1,16 @@
+{
+  "name": "Take Me Back to Japan",
+  "short_name": "Japan",
+  "description": "A little town under Mt. Fuji you walk in your browser, with a shiba called Hachi to show you round.",
+  "start_url": "/m.html",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#2b2542",
+  "theme_color": "#b98ab4",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

@@ -156,6 +156,7 @@ export function createMinimap(world) {
     const src = art.canvas;
     const fw0 = fit?.w ?? window.innerWidth * 0.92, fh0 = fit?.h ?? window.innerHeight * 0.92;
     const scale = Math.min(fw0 / src.width, fh0 / src.height) * dpr;
+    lastScale = scale;
     const DW = Math.round(src.width * scale), DH = Math.round(src.height * scale);
     full.width = DW; full.height = DH;
     full.style.width = DW / dpr + 'px'; full.style.height = DH / dpr + 'px';
@@ -285,7 +286,7 @@ export function createMinimap(world) {
     c.beginPath(); c.roundRect(x + 0.4, y + 0.4, w - 0.8, h - 0.8, 6); c.stroke();
   }
 
-  let visible = false, fullOpen = false;
+  let visible = false, fullOpen = false, lastScale = 1;
   if (import.meta.env?.DEV) window.__minimapDraw = () => drawCorner(window.__scene.player.pos, window.__scene.player.yaw);
   return {
     /** Each frame: redraw the corner map only if you moved or turned. */
@@ -302,6 +303,14 @@ export function createMinimap(world) {
       last = { x: NaN, z: NaN, yaw: NaN };
     },
     get fullOpen() { return fullOpen; },
+    /** The world point under a CSS-px point on the open whole map, or null off the sheet (the phone's tap to walk). */
+    toWorld(cx, cy) {
+      if (!fullOpen) return null;
+      const r = full.getBoundingClientRect();
+      if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom) return null;
+      const k = dpr / lastScale;                     // art px a CSS px
+      return { x: art.bounds.x0 + ((cx - r.left) * k) / art.ppm, z: art.bounds.z0 + ((cy - r.top) * k) / art.ppm };
+    },
     setFull(open, pos, yaw, opts) {
       fullOpen = open;
       if (open) drawFull(pos, yaw, opts);

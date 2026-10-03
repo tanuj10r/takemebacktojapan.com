@@ -41,6 +41,8 @@ export class TouchPlayer extends Player {
     this._push = { x: 0, y: 0 };    // the stick, eased
     this._glide = { yaw: 0, pitch: 0 };   // rad/s left over from a flick
     this._normal = { x: 0, z: 0, hit: false };
+    this.steer = null;              // tap to walk (controls/goto.js): a world direction { x, z, slow 0..1 } to walk this frame
+    this.lookedAt = 0;              // performance.now() of the last drag (the camera's help waits after one)
   }
 
   /* core/player.js binds the mouse and the pointer lock here: a phone has
@@ -95,6 +97,7 @@ export class TouchPlayer extends Player {
   /** Turn by radians (to the right, and down): the seat's own look when seated, the held view's slack. */
   _turn(ry, rp, moved) {
     this.looked += moved;
+    if (moved > 0) this.lookedAt = performance.now();
     if (this.seat) {
       if (this.seat.dir > 0 && this.seat.k > 0.98) {
         const S = this.seat.look;
@@ -184,6 +187,12 @@ export class TouchPlayer extends Player {
       if (k.has('KeyD') || k.has('ArrowRight')) ks += 1;
       if (k.has('KeyA') || k.has('ArrowLeft')) ks -= 1;
       if (kf || ks) { fwd = kf; side = ks; push = 1; keyed = true; keyRun = k.has('ShiftLeft') || k.has('ShiftRight'); }
+      // tap to walk: a world direction, turned into the walker's own terms, at a walk (easing in to the stop)
+      else if (this.steer) {
+        const s = this.steer, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+        fwd = -(s.x * sn + s.z * c); side = s.x * c - s.z * sn;
+        push = Math.max(0.35, Math.min(1, s.slow ?? 1));
+      }
     } else P.x = P.y = 0;
     // a full push held a moment breaks into a run; the run lasts while the push stays high
     if (keyed) { this._edgeT = 0; this._setRun(keyRun); }

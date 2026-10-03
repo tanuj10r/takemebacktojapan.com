@@ -179,7 +179,7 @@ if (shadowOnly.length) {
  * soundBus here), Hachi's buttons, the postcard.  main.js tells it what holds the view and answers two buttons. */
 const TIMES = ['golden', 'night', 'morning'];
 shell = createShell({
-  canvas, camera, world,
+  canvas, camera, world, scene,
   held: () => !!gliding || watch.on,
   famous: () => !!famousView,
   onTime: () => { if (!fade) setTime(TIMES[(TIMES.indexOf(lastView) + 1) % TIMES.length]); },
