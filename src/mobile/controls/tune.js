@@ -20,7 +20,14 @@ import { MOBILE } from '../../config.js';
 
 const DEFAULTS = {
   stick: {
-    off: true,           // (Tan, 2026-10-03: no stick; tap where you want to go, controls/goto.js.  A keyboard still walks)
+    off: false,
+    /* (Tan, 2026-10-03: "the entire navigation... with just one joystick on the right") one stick, under the right
+     * thumb: up walks on, down steps back, left and right turn you (no sidestep) */
+    side: 'right',
+    steer: true,
+    turn: 1.9,           // rad/s at a full push across
+    turnCurve: 1.6,      // the push across to the turn (more is gentler near the middle: a nudge is a small turn)
+    level: 0.6,          // 1/s: walking, the view eases back toward level (nothing else on the stick looks up or down)
     zone: 0.46,          // the left part of the screen a thumb can land in to walk (0..1 of the width)
     top: 0.2,            // ... below this part of the height (the top is the map's and the labels')
     radius: 50,          // px: a full push
@@ -52,18 +59,6 @@ const DEFAULTS = {
   },
   aim: { reach: 2.8, cone: 0.6 },                    // no crosshair hit: the nearest thing to do within reach (m) and this cone (rad)
   tap: { ms: 260, px: 12 },                          // a tap: quick and still
-  /* tap to walk (controls/goto.js) */
-  goto: {
-    hachiPx: 56,         // a tap this near Hachi on the screen (CSS px) walks you up to him
-    spotPx: 64,          // ... this near the ring of something to do, into its ring
-    snap: 4,             // a tap on the ground or a building this near (m) something to do walks you into its ring
-    reach: 90,           // m: a tap farther than this (the sky, the far hills) does nothing
-    arrive: 0.45,        // m: there
-    ahead: 10,           // cells down the way to look for a point in plain sight to steer at
-    turn: 2.4,           // 1/s: the camera's ease toward the way ahead, and toward what is there on arrival
-    pitch: -0.02,        // the level the view eases to while you walk
-    handsOff: 1.4,       // s after a drag in which the camera is left alone
-  },
 };
 
 const over = MOBILE.controls ?? MOBILE.pocket?.controls ?? {};

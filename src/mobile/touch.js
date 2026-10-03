@@ -59,7 +59,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
     .stick.on { opacity: 1; transition: opacity .1s ease, box-shadow .25s ease, color .25s ease; }
     .knob.on { opacity: 1; transition: opacity .1s ease; }
     .stick.run { color: #ffe08a; box-shadow: inset 0 0 0 3px rgba(255,214,120,.98), 0 0 0 1px rgba(120,84,10,.3), 0 0 22px rgba(255,205,96,.6); }
-    .look-hint { left: auto; top: auto; right: max(26px, calc(var(--safe-r, 0px) + 18px)); bottom: max(54px, calc(var(--safe-b, 0px) + 44px));
+    .look-hint { left: ${S.side === 'right' ? 'max(26px, calc(var(--safe-l, 0px) + 18px))' : 'auto'}; top: auto; right: ${S.side === 'right' ? 'auto' : 'max(26px, calc(var(--safe-r, 0px) + 18px))'}; bottom: max(54px, calc(var(--safe-b, 0px) + 44px));
       display: flex; align-items: center; gap: 8px; padding: 7px 14px 7px 10px; border-radius: 999px; background: rgba(43,37,66,.62); color: #fff;
       font: 700 10.5px/1.3 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase;
       transition: opacity .5s ease; }
@@ -85,7 +85,8 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
   const vw = () => window.innerWidth, vh = () => window.innerHeight;
   // where the stick rests when no thumb is on it: bottom left, inside the safe area
   let insets = null;               // the safe area, measured once per screen size
-  const rest = () => { insets ??= [safe('l'), safe('b')]; return [S.rest[0] + insets[0], vh() - S.rest[1] - insets[1]]; };
+  const right = S.side === 'right';
+  const rest = () => { insets ??= [safe(right ? 'r' : 'l'), safe('b')]; return [right ? vw() - S.rest[0] - insets[0] : S.rest[0] + insets[0], vh() - S.rest[1] - insets[1]]; };
   const place = (el, x, y) => { el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`; };
   const home = () => { const [x, y] = rest(); cx = x; cy = y; place(base, x, y); place(knob, x, y); };
   const show = (on) => {
@@ -94,7 +95,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
     if (on) home();
   };
 
-  const inStickZone = (x, y) => x < vw() * S.zone && y > vh() * S.top;
+  const inStickZone = (x, y) => (right ? x > vw() * (1 - S.zone) : x < vw() * S.zone) && y > vh() * S.top;
 
   function stickMove(x, y) {
     let dx = x - cx, dy = y - cy;

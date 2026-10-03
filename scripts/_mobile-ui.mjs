@@ -227,13 +227,12 @@ try {
       // (Tan, 2026-10-03) a tap on a place walks you there; a tap off the sheet only closes it
       await P.finger.tap(P.size.width / 2, P.size.height / 2);
       await page.waitForTimeout(500);
-      check(`${way}: a tap on the map closes it and walks you to that place`, await page.evaluate(() => !window.__m.shell.minimap.fullOpen && !window.__m.player.suspended && window.__m.shell.goTo.walking));
-      await page.evaluate(() => window.__m.shell.goTo.cancel());
+      check(`${way}: a tap closes it`, await page.evaluate(() => !window.__m.shell.minimap.fullOpen && !window.__m.player.suspended));
       await P.tapOn('.mh-map');
       await page.waitForTimeout(700);
       await P.finger.tap(4, 4);
       await page.waitForTimeout(500);
-      check(`${way}: a tap off the sheet only closes it`, await page.evaluate(() => !window.__m.shell.minimap.fullOpen && !window.__m.shell.goTo.walking));
+      check(`${way}: a tap off the sheet closes it too`, await page.evaluate(() => !window.__m.shell.minimap.fullOpen));
       // the time of day
       await P.tapOn('[data-b="time"]');
       await page.waitForTimeout(1300);
@@ -352,24 +351,22 @@ try {
       const rest = await page.evaluate(() => window.__m.touch.state.rest);
       const sx = rest[0], sy = rest[1];
       const gait = () => page.evaluate(() => ({ ...window.__m.player.gait, x: window.__m.player.pos.x, z: window.__m.player.pos.z, yaw: window.__m.player.yaw, pitch: window.__m.player.pitch }));
-      // tap to walk (Tan, 2026-10-03: no stick): a tap on the road ahead walks you there and stops; a drag stops a walk
-      const walking = () => page.evaluate(() => window.__m.shell.goTo.walking);
+      // one stick on the right (Tan, 2026-10-03): up walks on, across turns (no sidestep), resting bottom right
       let g0 = await gait();
-      await finger.tap(W * 0.5, H * 0.62);
-      await page.waitForTimeout(250);
-      const w0 = await walking(), ringOn = await page.evaluate(() => window.__m.shell.goTo.ring.visible);
-      await page.waitForTimeout(3500);
+      await finger.down(1, sx, sy); await finger.move(1, sx, sy - 60);
+      await page.waitForTimeout(1500);
       let g1 = await gait();
-      check(`${way}: a tap on the road walks you there (a ring where you are going), and stops`, w0 && ringOn && Math.hypot(g1.x - g0.x, g1.z - g0.z) > 2 && !(await walking()), { w0, ringOn, from: [g0.x, g0.z], to: [g1.x, g1.z] });
-      check(`${way}: no stick on the screen`, await page.evaluate(() => !document.querySelector('.stick.show')));
-      await P.stand(0, 14, 0, -40);
-      await finger.tap(W * 0.5, H * 0.6);
-      await page.waitForTimeout(400);
-      await finger.drag(2, W * 0.72, H * 0.55, W * 0.72 + 60, H * 0.55, 300);
-      check(`${way}: a drag stops a walk`, !(await walking()));
+      await finger.move(1, sx + 60, sy);
+      await page.waitForTimeout(800);
+      const g2 = await gait();
+      await finger.up(1);
+      check(`${way}: the stick rests bottom right`, sx > W * 0.6 && sy > H * 0.55, { sx, sy });
+      check(`${way}: up on the stick walks on`, Math.hypot(g1.x - g0.x, g1.z - g0.z) > 1.5, { from: [g0.x, g0.z], to: [g1.x, g1.z] });
+      check(`${way}: across turns you, with no sidestep`, Math.abs(g2.yaw - g1.yaw) > 0.4 && Math.hypot(g2.x - g1.x, g2.z - g1.z) < 2.5,      // (the walk winding down as the push goes across) { yaw: [g1.yaw, g2.yaw] });
+      check(`${way}: the context button sits on the left, clear of the stick`, await page.evaluate(() => { const r = document.querySelector('.mh-act').getBoundingClientRect(); return r.left < innerWidth * 0.4; }));
       await P.stand(0, 14, 0, -40);
       // the look: a slow 200 px drag, a quick one, up and down; from the right thumb's side
-      const lx = W * 0.72, ly = H * 0.55;
+      const lx = W * 0.3, ly = H * 0.55;
       let a = await gait();
       await finger.drag(2, lx, ly, lx + 200 * (way === 'land' ? 1 : 0.6), ly, 900);
       await page.waitForTimeout(350);
@@ -409,14 +406,13 @@ try {
       const lat = await page.evaluate(() => { const f = window.__lat.frames, m = window.__lat.moves; const d = m.map(([ts, t]) => t - ts).filter((x) => x >= 0 && x < 1000).sort((p, q) => p - q); f.sort((p, q) => p - q); return { n: f.length, mean: f.reduce((s, x) => s + x, 0) / (f.length || 1), p95: f[Math.floor(f.length * 0.95)] ?? 0, max: f[f.length - 1] ?? 0, dispatch: d[Math.floor(d.length / 2)] ?? 0, fps: window.__m.perf.fps }; });
       note(`${way}: input-to-camera latency, ms (the finger's event to the frame that has the camera turned)`, lat);
       check(`${way}: the camera turns in the frame after the finger moves (mean under 17 ms at 60 fps, here ${lat.mean.toFixed(1)})`, lat.n > 20 && lat.mean < 20, lat);
-      // a pause stops a walk
-      await P.stand(0, 14, 0, -40);
-      await finger.tap(W * 0.5, H * 0.6);
-      await page.waitForTimeout(300);
+      // a pause lets go of the stick
+      await finger.down(1, sx, sy); await finger.move(1, sx, sy - 50);
       await P.pressOn('[data-b="pause"]');
       await page.waitForTimeout(300);
-      const let0 = await page.evaluate(() => ({ locked: window.__m.player.locked, walking: window.__m.shell.goTo.walking }));
-      check(`${way}: pausing stops a walk`, !let0.locked && !let0.walking, let0);
+      const let0 = await page.evaluate(() => ({ ...window.__m.touch.state, locked: window.__m.player.locked }));
+      check(`${way}: pausing lets go of the stick`, !let0.locked && !let0.stick && let0.push === 0, let0);
+      await finger.up(1);
       check(`${way}: controls: no page errors`, P.errors.length === 0, P.errors.slice(0, 4));
       await P.ctx.close();
     }

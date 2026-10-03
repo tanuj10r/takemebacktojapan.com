@@ -250,8 +250,8 @@ export const MOBILE_STRINGS = {
   buttons: { hachi: 'Hachi', time: 'Time', pause: 'Pause', map: 'Map' },
   aria: { hachi: 'Whistle for Hachi', time: 'Change the time of day', pause: 'Pause', map: 'Open the map', act: 'Interact' },
   /* until each has been done once */
-  hints: { walk: 'Walk', look: 'Tap to walk · drag to look' },
-  closeMap: 'Tap a place to go there',
+  hints: { walk: 'Walk & turn', look: 'Drag to look around' },
+  closeMap: 'Tap to close',
   times: { morning: 'Morning', golden: 'Golden hour', night: 'Night' },
   timeShort: { morning: 'Morning', golden: 'Golden', night: 'Night' },
   /* Hachi's hello, in touch words (animals/guide.js reads STRINGS.hachi) */

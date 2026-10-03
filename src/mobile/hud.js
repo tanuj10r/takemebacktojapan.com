@@ -70,7 +70,7 @@ const CSS = `
   body.map-open .mh-map { display: none; }
 
   /* the context action: a pill just above the right thumb's resting place (it looks from below it) */
-  .mh-act { position: absolute; right: max(18px, calc(var(--safe-r) + 8px)); bottom: clamp(112px, 34vh, 250px);
+  .mh-act { position: absolute; left: max(18px, calc(var(--safe-l) + 8px)); bottom: clamp(112px, 34vh, 250px);      /* (left: the right thumb is on the stick, Tan 2026-10-03) */
     opacity: 0; transform: translateY(8px) scale(.94); transition: opacity .2s, transform .2s cubic-bezier(.2,.9,.3,1.3); pointer-events: none; }
   .mh-act.on { opacity: 1; transform: none; }
   .mh-act.on button { pointer-events: auto; }

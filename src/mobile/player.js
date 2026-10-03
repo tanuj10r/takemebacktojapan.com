@@ -41,8 +41,7 @@ export class TouchPlayer extends Player {
     this._push = { x: 0, y: 0 };    // the stick, eased
     this._glide = { yaw: 0, pitch: 0 };   // rad/s left over from a flick
     this._normal = { x: 0, z: 0, hit: false };
-    this.steer = null;              // tap to walk (controls/goto.js): a world direction { x, z, slow 0..1 } to walk this frame
-    this.lookedAt = 0;              // performance.now() of the last drag (the camera's help waits after one)
+    this.lookedAt = 0;              // performance.now() of the last look or turn (walking eases the view level only after a moment)
   }
 
   /* core/player.js binds the mouse and the pointer lock here: a phone has
@@ -179,6 +178,16 @@ export class TouchPlayer extends Player {
       P.x += (this.stick.x - P.x) * e; P.y += (this.stick.y - P.y) * e;
       fwd = -P.y; side = P.x;
       push = Math.min(1, Math.hypot(P.x, P.y));
+      if (S.steer) {
+        // one stick (Tan, 2026-10-03): across turns, up and down walk; the walk's pace from the push along
+        const ax = Math.abs(P.x), turn = ax < 0.02 ? 0 : Math.sign(P.x) * Math.pow(Math.min(1, ax), S.turnCurve) * S.turn;
+        if (turn) { this.yaw -= turn * dt; this.lookedAt = performance.now(); }
+        side = 0;
+        push = Math.min(1, Math.abs(P.y));
+        if (push < 0.04) push = 0;
+        // walking on, the view eases back toward level: nothing on the stick looks up or down
+        if (push > 0 && performance.now() - this.lookedAt > 1200) this.pitch += (0 - this.pitch) * (1 - Math.exp(-S.level * dt));
+      }
       if (push < 0.01) push = 0;
       // or the keys, a full push (Shift runs)
       let kf = 0, ks = 0;
@@ -187,12 +196,6 @@ export class TouchPlayer extends Player {
       if (k.has('KeyD') || k.has('ArrowRight')) ks += 1;
       if (k.has('KeyA') || k.has('ArrowLeft')) ks -= 1;
       if (kf || ks) { fwd = kf; side = ks; push = 1; keyed = true; keyRun = k.has('ShiftLeft') || k.has('ShiftRight'); }
-      // tap to walk: a world direction, turned into the walker's own terms, at a walk (easing in to the stop)
-      else if (this.steer) {
-        const s = this.steer, c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
-        fwd = -(s.x * sn + s.z * c); side = s.x * c - s.z * sn;
-        push = Math.max(0.35, Math.min(1, s.slow ?? 1));
-      }
     } else P.x = P.y = 0;
     // a full push held a moment breaks into a run; the run lasts while the push stays high
     if (keyed) { this._edgeT = 0; this._setRun(keyRun); }

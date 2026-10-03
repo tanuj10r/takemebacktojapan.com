@@ -2,7 +2,7 @@
 //
 //   node scripts/_mini-flow.mjs <out dir> [--portrait] [--url=http://127.0.0.1:5195] [--q=tier=light]
 //
-// Start by tap, walk by tapping where to go, look by dragging, a konbini visit (a chip), the mochi shop, the train's
+// Start by tap, walk and turn with the right stick, look by dragging, a konbini visit (a chip), the mochi shop, the train's
 // wait and its listening spot, Han's show, Hachi's whistle; no console errors; the page's own GPU count (?diag's)
 // at each step and its peak.  One browser at a time: /tmp/lawson-browser.lock.
 import { chromium } from 'playwright';
@@ -60,20 +60,30 @@ try {
   await wait(9000);                                      // Hachi's hello
   await shot('1-famous-view');
 
-  // tap to walk (Tan, 2026-10-03: no stick): a tap on the road ahead walks you there; a drag looks (and stops a walk)
+  // one stick on the right (Tan, 2026-10-03): up walks on, across turns; a drag elsewhere looks
   const s0 = await state();
-  await touch('touchStart', [[vp.width * 0.3, vp.height * 0.66, 1]]);      // (left of Hachi, who sits before you: a tap on him walks you to him)
+  const jx = vp.width * 0.84, jy = vp.height * 0.72;
+  await touch('touchStart', [[jx, jy, 1]]);
+  for (let k = 1; k <= 6; k++) { await touch('touchMove', [[jx, jy - k * 9, 1]]); await wait(30); }
+  await wait(2500);
   await touch('touchEnd', []);
-  await wait(4000);
+  await wait(400);
   const sw = await state();
-  ok('a tap walks', Math.hypot(sw.x - s0.x, sw.z - s0.z) > 2, { from: [s0.x, s0.z], to: [sw.x, sw.z] });
-  const lx = vp.width * 0.7, ly = vp.height * 0.5;
+  ok('the stick walks', Math.hypot(sw.x - s0.x, sw.z - s0.z) > 2, { from: [s0.x, s0.z], to: [sw.x, sw.z] });
+  await touch('touchStart', [[jx, jy, 1]]);
+  for (let k = 1; k <= 6; k++) { await touch('touchMove', [[jx + k * 9, jy, 1]]); await wait(30); }
+  await wait(900);
+  await touch('touchEnd', []);
+  await wait(300);
+  const st2 = await state();
+  ok('the stick turns', Math.abs(st2.yaw - sw.yaw) > 0.3 && Math.hypot(st2.x - sw.x, st2.z - sw.z) < 0.5, { yaw: [sw.yaw, st2.yaw] });
+  const lx = vp.width * 0.3, ly = vp.height * 0.5;
   await touch('touchStart', [[lx, ly, 2]]);
   for (let k = 1; k <= 10; k++) { await touch('touchMove', [[lx - k * 12, ly, 2]]); await wait(30); }
   await touch('touchEnd', []);
   await wait(500);
   const s1 = await state();
-  ok('a drag looks', Math.abs(s1.yaw - sw.yaw) > 0.1, { yaw: [sw.yaw, s1.yaw] });
+  ok('a drag looks', Math.abs(s1.yaw - st2.yaw) > 0.1, { yaw: [st2.yaw, s1.yaw] });
 
   // the konbini: stand on the door's spot, tap a chip, the visit plays
   await put(-2.3, 6, 0); await wait(600);
