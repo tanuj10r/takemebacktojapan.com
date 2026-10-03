@@ -305,7 +305,7 @@ export function buildShrine(ctx, net, kit, s, F) {
 
   /* ---- the wind chimes, heard in the grounds (the shrine's sound experience) ---- */
   const mid = ctx.toWorld(town(0, D * 0.5));
-  soundBus.zone('shrine-chimes', { x: mid.x, z: mid.z, y: 2.5, near: 6, far: 26, level: 0.5 });
+  soundBus.zone('shrine-chimes', { x: mid.x, z: mid.z, y: 2.5, near: 6, far: /*@mini 18 @*/26/*@@*/, level: 0.5 });      // (the pocket town: the bench is 25 m off)
   ctx.experiences?.add({ kind: 'sound', id: 'shrine', name: 'Wind chimes', jp: '風鈴', ...town(0, D * 0.5) });
 
   // animate only near: the trickle, the chimes in the breeze

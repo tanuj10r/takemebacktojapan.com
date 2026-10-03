@@ -1,4 +1,4 @@
-import { TOWN, WORLD, SLOWLIFE, PLACES, ANIMALS, MOBILE } from '../config.js';
+import { TOWN, WORLD, SLOWLIFE, PLACES, ANIMALS, MOBILE, SOUND } from '../config.js';
 
 /* ------------------------------------------------------------------ *
  * The pocket town's plan (Tan, 2026-10-03: "redo the entire layout of the town such that we do just one single
@@ -84,6 +84,13 @@ TOWN.quiet[1] = [-200, S(153), 200, S(171)];
   L.butterflies.at[0] += mx; L.butterflies.at[1] += mz;
   L.glints.count = 0;                       // (the glints were the pond's)
 }
+
+/* ---- the sounds: in a town this small each place's reach is shortened, so wherever you stand you hear one place
+ * at a time (the desktop's rule): the station's announcements over the plaza but not down to ドンペン堂, the walk
+ * signals along their own street, the bench's flute only at the bench ---- */
+SOUND.station = { ...SOUND.station, near: 14, far: 40 };
+SOUND.walkSignal = { ...SOUND.walkSignal, near: 10, far: 30 };
+SLOWLIFE.sound = { ...SLOWLIFE.sound, near: 4, far: 15 };
 
 /* ---- the world's bounds follow the town's (config.js WORLD) ---- */
 WORLD.bounds.x0 = -TOWN.bounds.x1; WORLD.bounds.x1 = -TOWN.bounds.x0;

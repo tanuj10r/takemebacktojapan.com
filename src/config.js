@@ -1084,8 +1084,8 @@ export const MOBILE = {
   /* Draw distance: batches whose bounds lie past `far` m are not drawn; the fog (each look's own colour) has
    * closed in before it, so the edge is never seen.  The town is ~190 m across: from the famous view the far
    * tree line stands in the haze as on the desktop. */
-  far: 150,
-  fog: { near: 55, far: 145 },
+  far: 210,                  // (the pocket town: the whole of it, from anywhere in it)
+  fog: { near: 70, far: 205 },
   detail: 42,                // small instanced things (clutter, flowers, weeds) only this close
   small: { r: 2, far: 90 },  // a loose part under `r` m across (a gate machine, a lamp, a plate) is drawn only within `far` m
   cell: 64,                  // batches with a page of their own, per cell (m): small enough to shrink and stream by distance
@@ -1098,7 +1098,7 @@ export const MOBILE = {
   aimAssist: { reach: 2.8, cone: 0.6 },           // no crosshair hit: the nearest thing within reach (m) and this cone (rad)
   /* `stream`: batches and textures farther than far + stream (m) give their GPU copy back, and upload again
    * as you come near (0: never). */
-  stream: 8,
+  stream: 0,                 // (the pocket town: everything stays; nothing loads or unloads as you walk, no page swaps size)
   /* A painted page farther than `far` m from you (its nearest user) shows a copy `k` its size, the whole one
    * again within `near`; in the konbini, every town page (seen through the glass) at most `store` its size
    * (lite.js makeCuller). */

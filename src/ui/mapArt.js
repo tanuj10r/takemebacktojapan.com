@@ -177,7 +177,9 @@ export function paintMap(world) {
   box([bq[0] + 0.9, bq[1], bq[2] + 0.9, bq[3]], M.shadow);
 
   /* ---- the paddies (田んぼ): each plot as planned, its earth paths between ---- */
-  {
+  /*@mini const keepBox = L.paddies.box; @*//*@@*/
+  for (const fieldBox of [L.paddies.box/*@mini , [-26, 45, 58, 83.5] @*//*@@*/]) {
+    L.paddies.box = fieldBox;      // (the pocket town's second field, behind the store: land/index.js)
     const plan = planPaddies();
     box(trect(L.paddies.box), M.levee);
     for (const p of plan.plots) {
@@ -220,6 +222,7 @@ export function paintMap(world) {
     for (const ch of plan.channels) { const q = trect([ch.x0, ch.z0, ch.x1, ch.z1]); box(q, M.waterDeep); edge(q, M.concreteEdge, 0.12); }
     if (plan.apron) box(trect(plan.apron), M.concrete, 0.3);
   }
+  /*@mini L.paddies.box = keepBox; @*//*@@*/
 
   /* ---- 鏡池: its grounds, the granite promenade, the water ---- */
   /*@mini if (false) @*//*@@*/{
