@@ -8,12 +8,12 @@ import { TOWN, WORLD, SLOWLIFE, PLACES, ANIMALS, MOBILE, SOUND } from '../config
  * land/, line/) run on a much smaller plan, the key art made walkable.  From the famous view (the photographers'
  * pavement, looking at NIPPON with Fuji behind it):
  *
- *   the main road     as on the desktop, end to end; the konbini, the car park with Han, ぺったん堂 opposite the
- *                     shopping lane's mouth: untouched
+ *   the main road     as on the desktop, end to end; the konbini, the car park (no Han: Tan, 2026-10-03, the pocket
+ *                     town smaller still), a plain house where ぺったん堂 stands on the desktop
  *   right             the shopping lane (the desktop's spine, x -50), 36 m long: ドンペン堂 on its corner, shops,
  *                     then the station plaza, the station and the line; the station lane (x -80) runs from the
- *                     plaza's corner over the level crossing to Hachi's home.  Everything there is the desktop's,
- *                     moved `dz` (76 m) nearer the road
+ *                     plaza's corner over the level crossing to a guardrail at the town's fence (no Hachi's home).
+ *                     Everything there is the desktop's, moved `dz` (76 m) nearer the road
  *   left              the shrine on the main road beside the store; past it two paddies and the slow-life bench
  *                     looking over them to Fuji
  *   behind you        the car park; a short road from the main road's zebra to the Deer Park gate (the tour's end)
@@ -100,29 +100,23 @@ WORLD.bounds.z0 = 2 * main - TOWN.bounds.z1; WORLD.bounds.z1 = 2 * main - TOWN.b
 {
   const at = {
     spine: [-50, 44], donpen: [-62.3, 29.3], shrine: [51, 30], plaza: [-52.5, S(137)], station: [-51, S(151.5)],
-    crossing: [-80, S(162)], hachiHome: [-78.4, S(176.6)], slowlife: [SLOWLIFE.bench[0], SLOWLIFE.bench[1]], deerGate: [30, -20.6],
+    crossing: [-80, S(162)], slowlife: [SLOWLIFE.bench[0], SLOWLIFE.bench[1]], deerGate: [30, -20.6],
   };
   for (const p of PLACES) if (at[p.id]) p.at = at[p.id];
-  for (const id of ['pond', 'river']) { const i = PLACES.findIndex((p) => p.id === id); if (i >= 0) PLACES.splice(i, 1); }
+  for (const id of ['pond', 'river', 'han', 'mochi', 'hachiHome']) { const i = PLACES.findIndex((p) => p.id === id); if (i >= 0) PLACES.splice(i, 1); }
 }
 
-/* ---- Hachi's tour over the pocket town (world frame).  From the view: the konbini, back over the road to Han, the
- * far pavement to ぺったん堂, over to the shopping lane: ドンペン堂, its zebra (piyo), the plaza and the station, the
- * train; the station lane over the level crossing to his home; back through the plaza and down the lane, west
- * along the store's pavement to the shrine and the bench over the paddies; over the main road's zebra (kakko) and
- * the gate road's (piyo) to the Deer Park gate, where he naps.  Every sound place is passed within earshot. ---- */
+/* ---- Hachi's tour over the pocket town (world frame; Tan, 2026-10-03: no Han, no ぺったん堂, no home).  From the
+ * view: the konbini, east along the store's pavement to the shopping lane: ドンペン堂, its zebra (piyo), the plaza and
+ * the station, the train; up the station lane to the level crossing's barrier and back; down the lane, west along
+ * the store's pavement to the shrine and the bench over the paddies; over the main road's zebra (kakko) and the gate
+ * road's (piyo) to the Deer Park gate, where he naps.  Every sound place is passed within earshot. ---- */
 ANIMALS.guide.tour = [
   { id: 'view', x: 0, z: 16.5 },
   { id: 'konbini', x: -2.3, z: 2.3 },
   { x: -1, z: 9 },
-  { x: -1, z: 18.6 },
-  { x: -18.3, z: 20.5 },                      // the gap in the car park's kerb
-  { id: 'han', x: -21.7, z: 23.5 },           // Han and the RX-7
-  { x: -18.3, z: 20.5 },
-  { x: -12, z: 19.3 },                        // east along the far pavement, behind the famous view
-  { x: 20, z: 19.3 },
-  { id: 'mochi', x: 39.2, z: 19.4 },          // ぺったん堂
-  { x: 50, z: 17 },                           // over to the shopping lane's mouth
+  { x: 20, z: 9.5 },                          // east along the store's pavement
+  { x: 50, z: 9.5 },                          // to the shopping lane's mouth
   { x: 50, z: 6 },
   { x: 51.5, z: -1.7, hear: 'donki' },        // ドンペン堂's door and its jingle
   { x: 50, z: -18.3, hear: 'walk1' },         // the lane's zebra (piyo), at the plaza
@@ -132,11 +126,7 @@ ANIMALS.guide.tour = [
   { x: 51, z: W(-115.5) },
   { x: 68, z: W(-110) },                      // through the plaza
   { x: 80, z: W(-116) },                      // onto the station lane
-  { x: 80, z: W(-127.6), cross: true, hear: 'crossing' },   // at the barrier: he waits here while it is shut
-  { x: 80, z: W(-141.0) },                    // over the line
-  { visit: 'home', x: 79.4, z: W(-146.6) },   // ハチのおうち
-  { x: 80, z: W(-141.0), cross: true },       // back to the barrier, from the far side
-  { x: 80, z: W(-127.6) },
+  { x: 80, z: W(-127.6), cross: true, hear: 'crossing' },   // at the barrier (he waits there while it is shut): the bells, the train going by
   { x: 68, z: W(-110) },                      // back through the plaza
   { x: 50, z: -22 },
   { x: 50, z: 9.5 },                          // down the lane to the main road
@@ -155,6 +145,8 @@ ANIMALS.guide.tour = [
 ];
 ANIMALS.guide.hear = {
   walk0: [-35, 13.8, 14], walk1: [50, -18.3, 14], walk3: [-30, 23.7, 14], donki: [55.9, -1.7, 12],
-  station: [51, W(-125.5), 14], crossing: [80, W(-134.3), 10], shrine: [-51, -2.2, 14],
+  station: [51, W(-125.5), 14], crossing: [80, W(-134.3), 12], shrine: [-51, -2.2, 14],
 };
+/* (the crossing: he turns back at its barrier now (no home past it), so you hear it from up to 12 m: its bells are
+ * whole within 10 m and carry to 45, config.js SOUND.crossingBells) */
 ANIMALS.guide.nap = [TOWN.land.gateBench.x, TOWN.land.gateBench.z + 0.75];

@@ -148,7 +148,7 @@ const SIM = async (arg) => {
   const order = [];
   let spineOff = 0;
   const kSpine = [A.tour.findIndex((l) => l.hear === 'walk1'), A.tour.findIndex((l) => l.hear === 'station')];
-  const WANT = PHONE_TOUR ? ['konbini', 'han', 'mochi', 'donki', 'walk1', 'station', 'train', 'crossing', 'shrine', 'slowlife']      // (the pocket town's order)
+  const WANT = PHONE_TOUR ? ['konbini', 'donki', 'walk1', 'station', 'train', 'crossing', 'shrine', 'slowlife']      // (the pocket town's order: no Han, no ぺったん堂, no home)
     : ['konbini', 'han', 'mochi', 'walk1', 'donki', 'walk2', 'station', 'train', 'crossing', 'shrine', 'slowlife'];
   const inOrder = (from = 0, to = WANT.length) => { const at = WANT.slice(from, to).map((k) => order.indexOf(k)); return at.every((v, i) => v >= 0 && (i === 0 || v > at[i - 1])); };
   /* The surface (Tan, 2026-10-02: "Hachi's y must always be the true top surface under him"): what is really drawn
@@ -383,10 +383,10 @@ const SIM = async (arg) => {
     trail.forEach(([x, z], i) => { const px = ((x - W.X0) / W.C) * sc, pz = (W.nz - (z - W.Z0) / W.C) * sc; i ? ctx.lineTo(px, pz) : ctx.moveTo(px, pz); });
     ctx.stroke();
     res.map = c.toDataURL('image/png');
-    res.ok = rows.length === 5 && viol === 0 && wall === 0 && stuck < 5 && res.end.state === 'nap' && res.respawn.ok && cone > 60
+    res.ok = rows.length === (PHONE_TOUR ? 3 : 5) && viol === 0 && wall === 0 && stuck < 5 && res.end.state === 'nap' && res.respawn.ok && cone > 60
       && heard && charges >= 1 && res.jog >= 2.7 && gateMin <= 8 && waterCells === 0 && alleyCells === 0 && sideEntries === 0 && feetLow === 0 && t < 900
-      && res.visited.includes('home') && res.visited.includes('shrine') && railEnter === 0
-      && ['home:bounce', 'home:spin', 'home:tunnel', 'home:hoop', 'home:kennel', 'home:toy', 'home:flop', 'shrine:sit'].every((q) => visitPhases.includes(q))
+      && (PHONE_TOUR || res.visited.includes('home')) && res.visited.includes('shrine') && railEnter === 0
+      && (PHONE_TOUR ? ['shrine:sit'] : ['home:bounce', 'home:spin', 'home:tunnel', 'home:hoop', 'home:kennel', 'home:toy', 'home:flop', 'shrine:sit']).every((q) => visitPhases.includes(q))
       // every stop and sound place in the tour's order, down the shopping street past ドンペン堂; on the drawn surface throughout
       && res.inOrder && spineOff < 8 && res.surface.under === 0 && res.surface.over === 0 && res.surface.inside === 0 && res.surface.snaps === 0 && SF.hops.kerb >= 4 && SF.hops.stair >= 8;
   } else if (kind === 'route') {
@@ -941,7 +941,7 @@ const SIM = async (arg) => {
 let bad = 0;
 try {
   if (PHONE) {
-    await page.goto(`${base}m.html`);
+    await page.goto(`${base}m.html?keepcpu`);   // (the surface check raycasts the town's batches: their CPU copies kept)
     await page.waitForFunction(() => window.__m && window.__guide, null, { timeout: 240000, polling: 500 });
     await page.evaluate(() => { window.__scene = window.__m; });
   } else {

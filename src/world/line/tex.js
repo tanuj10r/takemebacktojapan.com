@@ -124,6 +124,7 @@ export function makeDepartureBoard(w = 768, h = 256) {
   cv.width = w; cv.height = h;
   const c = cv.getContext('2d');
   const t = new THREE.CanvasTexture(cv);
+  t.userData.live = true;          // (drawn on as the trains come: the phone keeps its canvas, mobile/lite.js releaseCanvases)
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
   let last = '';

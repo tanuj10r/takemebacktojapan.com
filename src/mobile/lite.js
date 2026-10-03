@@ -24,9 +24,8 @@ import { mergeStatic } from '../world/merge.js';
  * ------------------------------------------------------------------ */
 
 export function liteConfig() {
-  // the two petal fields: 150 in the air and 250 falling from the trees on desktop
-  TOWN.petals.air = 70;
-  TOWN.petals.trees = 110;
+  // the two petal fields: 150 in the air and 250 falling from the trees, as on the desktop (the pocket town's quality
+  // pass, 2026-10-03: 70 and 110 before)
   // Hachi's distance fields kept grown at once (2.6 MB each)
   ANIMALS.guide.fields = 3;
   // POCKET: the plain local trains only (the Pokémon wrap's 4096 x 1024 page is 21 MB on the GPU)
@@ -34,6 +33,9 @@ export function liteConfig() {
    * comes in as the last has gone into the fog), so they share the one set (line/emu.js `lend`, phone build only):
    * a second is built only if both are ever within 300 m of the platform at once. */
   TOWN.rail.trains = ['box'];
+  /* Hachi a size up (Tan, 2026-10-03: "way too small while playing the mobile Pocket Town"): on a phone's small
+   * picture the desktop's 24 cm pup was a speck a few metres ahead; 1.3 is a grown shiba's ~31 cm */
+  ANIMALS.guide.size = 1.3;
 }
 
 /**
@@ -513,6 +515,7 @@ export function packStoreQuads(scene, { page = 2048 } = {}) {
       c.drawImage(t.image, s.x, s.y, s.w, s.h);
     }
     const tex = new THREE.CanvasTexture(cv);
+    tex.userData.live = true;            // (its size changes as you come near: releaseCanvases keeps its pictures)
     tex.colorSpace = list[0].material.map.colorSpace;
     tex.anisotropy = 8;
     tex.name = name;
@@ -582,6 +585,59 @@ export function packStoreQuads(scene, { page = 2048 } = {}) {
   };
   level(false, false);
   return { removed, level, get near() { return near; } };
+}
+
+/**
+ * The pocket town keeps everything (MOBILE.stream 0): nothing is ever given back to be uploaded again, so once
+ * the GPU holds a painted page its canvas is only weight.  A phone counts every canvas's backing store against
+ * the tab (118 MB of them at the start, Tan, 2026-10-03: "reduce even more memory"): each page's canvas goes to
+ * 1 x 1 once every texture made from it is on the GPU.  Not the pages drawn on as the game runs
+ * (`userData.live`: the departure board, the till's screen; `userData.size`: the konbini's label pages, which
+ * change level), nor any clone not yet drawn (a clone with its own wrap would upload again from the source).
+ * A lost GPU context can't be survived after this: main.js shows the Reload card (and the light tier, which
+ * streams and keeps its canvases, next time).  Returns { tick() } for the main loop (a sweep a second).
+ */
+export function releaseCanvases(scene, renderer) {
+  const users = new Map();
+  const out = { released: 0, releasedMB: 0, pending: 0, any: false };
+  const gather = () => {
+    users.clear();
+    scene.traverse((o) => {
+      for (const m of [o.material].flat()) if (m) for (const t of texturesOf(m)) {
+        if (!t.source) continue;
+        if (!users.has(t.source)) users.set(t.source, new Set());
+        users.get(t.source).add(t);
+      }
+    });
+  };
+  const live = (t) => t.userData.live || t.userData.size || t.isRenderTargetTexture || t.isDataTexture || t.isVideoTexture;
+  const shut = (t) => {
+    // (a released page drawn on again would upload the 1 x 1: said loudly, never silently blank)
+    Object.defineProperty(t, 'needsUpdate', { configurable: true, set(v) { if (v === true) console.error(`releaseCanvases: ${t.name || t.uuid} was drawn on after its canvas went`); } });
+  };
+  let clock = 0;
+  return {
+    out,
+    tick(dt) {
+      if ((clock += dt) < 1) return;
+      clock = 0;
+      gather();
+      out.pending = 0;
+      for (const [src, set] of users) {
+        const img = src.data;
+        if (!(img instanceof HTMLCanvasElement) || img.width * img.height < 64 * 64 || src.__released) continue;
+        if ([...set].some(live)) { src.__released = 'live'; continue; }
+        let ready = true;
+        for (const t of set) { const p = renderer.properties.get(t); if (!p.__webglTexture || p.__version !== t.version) { ready = false; break; } }
+        if (!ready) { out.pending++; continue; }
+        out.released++; out.releasedMB += (img.width * img.height * 4) / 1048576;
+        for (const t of set) { t.__w = img.width; t.__h = img.height; shut(t); }
+        src.__released = true;
+        img.width = 1; img.height = 1;
+        out.any = true;
+      }
+    },
+  };
 }
 
 /**

@@ -61,7 +61,7 @@ export function buildLine(ctx, { kit }) {
   lineCherries(ctx);
   // Hachi's own cherry, in his garden's corner (last in the list: the town's cherries keep their order, and the
   // famous views their petals and shadows)
-  { const HH = TOWN.hachiHome; ctx.sakura?.push({ x: HH.x1 - 1.7, z: HH.z1 - 1.5, y: 0, scale: 0.9, seed: 7461 }); }
+  /*@mini @*/{ const HH = TOWN.hachiHome; ctx.sakura?.push({ x: HH.x1 - 1.7, z: HH.z1 - 1.5, y: 0, scale: 0.9, seed: 7461 }); }/*@@*/
   /* the trains' sound and their straps: only near */
   const voices = sets.map(() => trainVoice());
   const lastV = sets.map(() => 0);
@@ -138,7 +138,7 @@ function buildBeyond(ctx, kit) {
       face: { x: 0, z: -1 }, faceKey: 'z-', ry: Math.PI,
     };
     // (the lot at the end of the crossing's lane is Hachi's garden: animals/home.js)
-    if (!(x < HH.gate.x && x + w > HH.gate.x)) buildHouse(ctx, null, kit, lot, F);
+    if (/*@mini true @*/!(x < HH.gate.x && x + w > HH.gate.x)/*@@*/) buildHouse(ctx, null, kit, lot, F);
     x += w + r.range(0.6, 1.4);
     k++;
   }

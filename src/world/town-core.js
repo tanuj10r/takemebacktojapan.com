@@ -74,7 +74,7 @@ export function buildCore(ctx) {
 
   /* one generated lot is ぺったん堂's (world/mochi/; config MOCHI.lot), found by its rect once the lots are cut, so no
    * other lot moves (a special lot would re-cut the street).  It stays a 'house' to the dressing and the map. */
-  const isMochi = (lot) => lot.rect.every((v, i) => Math.abs(v - MOCHI.lot[i]) < 0.2);
+  const isMochi = (lot) => /*@mini false && @*//*@@*/lot.rect.every((v, i) => Math.abs(v - MOCHI.lot[i]) < 0.2);   // (not in the pocket town)
   const built = lots.map((lot) => {
     if (!isMochi(lot)) return buildLot(ctx, net, kit, lot);
     lot.kind = 'house';
@@ -187,7 +187,9 @@ function buildCoreEdge(ctx) {
   // (the fence stops at the gate posts' outer faces, animals/home.js: its end post stood inside each gate post
   // with its inner face in the gate post's, and flickered in the opening)
   const GP = 0.105;
-  for (const [a, b] of [[C.x0, HG.x - HG.w / 2 - GP], [HG.x + HG.w / 2 + GP, C.x1]]) {
+  /* (the pocket town has no garden: the fence runs unbroken and the lane ends at a guardrail before it) */
+  /*@mini ctx.add(makeGuardrail({ x: HG.x, z: zEnd - 0.9, y: 0, ry: 0, len: 5.6 })); ctx.collide(HG.x - 2.9, zEnd - 1.1, HG.x + 2.9, zEnd - 0.7, 0.9); @*//*@@*/
+  for (const [a, b] of /*@mini [[C.x0, C.x1]] @*/[[C.x0, HG.x - HG.w / 2 - GP], [HG.x + HG.w / 2 + GP, C.x1]]/*@@*/) {
     ctx.add(makeTimberFence({ x: (a + b) / 2, z: zEnd, y: 0, len: b - a, axis: 'x', h: 1.2 }));
     ctx.collide(Math.min(a, HG.x + HG.w / 2), zEnd - 0.2, Math.max(b, HG.x - HG.w / 2), zEnd + 0.2, 1.2);
   }

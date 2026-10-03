@@ -1066,6 +1066,7 @@ export const MOBILE = {
   /* (Tan, 2026-10-03) the phone is a glimpse in portrait: the town in the top three quarters, a panel of controls and the
    * guide line in the bottom quarter (mobile/panel.js); turned sideways it asks to be turned back */
   portrait: true,
+  portraitTilt: 0.18,        // rad: the famous view's pitch, lowered in portrait (mobile/main.js viewPitch)
   route: true,
   /* The mini town (src/mobile/plan.js): the desktop's plan with the block row south of lane 112 taken out;
    * everything south of it (the plaza, the station, the line, the crossing, Hachi's home, 鏡池, the bench)
@@ -1081,16 +1082,21 @@ export const MOBILE = {
   wear: 1024,                // the painted weather's page (kit/paint.js wearAtlas: 2048 on the desktop; soft grime)
   /* the konbini's label and price-tag pages (world/store/pages.js) are held this many mipmap levels smaller
    * than the desktop holds them (measured there at 3840 px across; a phone on its side is 2556): `far` away
-   * from the store, `near` on its forecourt and in a visit */
-  storePages: { far: 1, near: 1 },
-  shadow: { size: 1536, half: 32, every: 2.0 },   // map size, half-width (m), refresh at most every s when still (desktop 2048 over 40; 4.2 cm a texel here, 3.9 there)
+   * from the store, `near` on its forecourt and in a visit (Tan, 2026-10-03, "reduce even more memory inside the
+   * Konbini": near 2, a quarter of the desktop's texels; side by side in a visit at the phone's own pixels the labels
+   * read the same, and the store's peak is 26 MB lower) */
+  storePages: { far: 1, near: 2 },
+  shadow: { size: 1536, half: 32, every: 2.0 },   // map size, half-width (m), refresh at most every s when still (desktop 2048 over 40; 4.2 cm a texel here, 3.9 there; the desktop's cost 14 MB more for reach, not sharpness)
   /* Draw distance: batches whose bounds lie past `far` m are not drawn; the fog (each look's own colour) has
    * closed in before it, so the edge is never seen.  The town is ~190 m across: from the famous view the far
    * tree line stands in the haze as on the desktop. */
   far: 210,                  // (the pocket town: the whole of it, from anywhere in it)
   fog: { near: 70, far: 205 },
-  detail: 42,                // small instanced things (clutter, flowers, weeds) only this close
-  small: { r: 2, far: 90 },  // a loose part under `r` m across (a gate machine, a lamp, a plate) is drawn only within `far` m
+  /* (the pocket town smaller still, Tan 2026-10-03: "compensate by increasing the quality"; paid for by what Han,
+   * ぺったん堂 and Hachi's home gave back): the small things and the loose parts drawn further, the desktop's petals
+   * (lite.js liteConfig), Hachi a size up */
+  detail: 60,                // small instanced things (clutter, flowers, weeds) only this close (42 before the quality pass)
+  small: { r: 2, far: 130 },  // a loose part under `r` m across (a gate machine, a lamp, a plate) is drawn only within `far` m
   cell: 64,                  // batches with a page of their own, per cell (m): small enough to shrink and stream by distance
   bulkCell: 256,             // ... and everything plain-coloured or skinned with the town's shared tiles: big cells, few draws
   plainCell: 0,              // ... what has no picture, and the town-wide sign atlas: one batch a style for the whole town (0: no cells)
@@ -1112,7 +1118,10 @@ export const MOBILE = {
   /* The town's sign atlas (mobile/town.js mergePocket): only pages of at most `max` texels that belong to one
    * region go in, packed per region of a grid cut at these world z and x lines; the rest keep their own. */
   atlas: { max: 256 * 256, z: [-35, -70], x: [-45, 45] },
-  keepCpu: true,             // keep the CPU copies (needed to stream, and to survive a lost GPU context)
+  /* keep the CPU copies (needed to stream, and to survive a lost GPU context): the light tier, which streams.  The
+   * pocket town's full tier streams nothing, so its static batches' vertex arrays go once uploaded (lite.js; Tan,
+   * 2026-10-03: less memory), and so do its painted pages' canvases (lite.js releaseCanvases) */
+  keepCpu: false,
   /* The light tier: the 4 GB iPhones, small Android phones and their web views, and any phone that lost the GPU
    * context here before (main.js picks).  The same textures and the same sharp frame near you (Tan, 2026-10-02:
    * sharpness is never what pays): what goes is draw distance and far pages.  ?tier=light / ?tier=full by hand. */
@@ -1124,6 +1133,7 @@ export const MOBILE = {
       shadow: { size: 1024, half: 28, every: 2.5 },
       render: { maxDpr: 3, pixels: 2.7e6, minScale: 2, step: 0.25, fpsLow: 40, fpsHigh: 55 },   // (Tan, 2026-10-02: sharp here too; what pays is distance, below)
       stream: 5,
+      keepCpu: true,
     },
   },
 };

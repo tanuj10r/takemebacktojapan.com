@@ -192,7 +192,7 @@ export function buildAnimals(ctx, { core, spots, facing } = {}) {
 
   /* ---- Hachi's own home, across the level crossing: his kennel, his toys, his garden (home.js; the dog is out: it
    * is the guide, below) ---- */
-  buildHachiHome(actx);
+  /*@mini @*/buildHachiHome(actx);/*@@*/   // (not in the pocket town)
 
   /* ---- the guide: the shiba that leads you round (Tan, 2026-09-28) ---- */
   const guide = buildGuide(actx, { spots, shadows, core, facing });

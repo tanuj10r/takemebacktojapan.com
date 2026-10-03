@@ -20,7 +20,7 @@ import { TUNE } from './controls/tune.js';
  * ------------------------------------------------------------------ */
 
 
-export function createPanel({ player, world, hud, act, whistle, pause, spots }) {
+export function createPanel({ player, world, hud, act, whistle, pause, spots, camera }) {
   const P = M.panel;
 
   const style = document.createElement('style');
@@ -29,6 +29,7 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots }) 
     padding: 1.1dvh max(12px, var(--safe-l)) max(1.4dvh, calc(var(--safe-b) + 2px)) max(12px, var(--safe-r));
     background: #fbf6f0; border-top: 3px solid #e59bb0; color: #2b2542; font-family: var(--ui); touch-action: none; }
   body.game-paused .pp { pointer-events: none; }
+  body.pui #hachi-card.pp-up, body.pui .look-hint.pp-up, body.pui .train-wait.pp-up { top: calc(var(--safe-t, 0px) + 164px) !important; bottom: auto !important; }
   .pp-rule { display: flex; align-items: center; gap: 10px; min-height: 0; padding: 7px 12px; border-radius: 12px; background: #f3ebe4; }
   .pp-rule svg { flex: none; width: 20px; height: 20px; color: #b98ab4; }
   .pp-rule b { display: block; font-size: 13.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -150,6 +151,37 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots }) 
     void dt;
   }
 
+  /* ---- nothing over Hachi (Tan, 2026-10-03: "the intro message is covering Hachi"): his hello card and the hints
+   * sit just above the panel; while one of them would cover him (the pup's box on screen, a margin round it) it
+   * moves to the top of the picture, under the map and the sound chip, and stays there until it goes (a quarter second
+   * of overlap first: not for the pup passing behind it) ---- */
+  const _a = camera ? camera.position.clone() : null, _b = _a?.clone();
+  const over = new Map();
+  function clearOfHachi(dt) {
+    if (!camera) return;
+    const h = GUIDE.where?.(), cv = document.getElementById('view')?.getBoundingClientRect();
+    let box = null;
+    if (h && cv) {
+      _a.set(h.x, h.y, h.z).project(camera); _b.set(h.x, h.y + 0.62, h.z).project(camera);
+      if (_a.z < 1 && _b.z < 1) {
+        const x = cv.left + (_a.x + 1) / 2 * cv.width, y0 = cv.top + (1 - _b.y) / 2 * cv.height, y1 = cv.top + (1 - _a.y) / 2 * cv.height;
+        const r = Math.max(24, (y1 - y0) * 0.75);
+        if (y1 > cv.top && y0 < cv.bottom) box = [x - r, y0 - 10, x + r, y1 + 10];
+      }
+    }
+    for (const q of [document.getElementById('hachi-card'), document.querySelector('.look-hint'), document.querySelector('.train-wait')]) {
+      if (!q) continue;
+      const shown = q.classList.contains('look-hint') ? q.classList.contains('show') && !q.classList.contains('used') : q.style.opacity === '1';
+      if (!shown) { q.classList.remove('pp-up'); over.delete(q); continue; }
+      if (q.classList.contains('pp-up')) continue;
+      const r = q.getBoundingClientRect();
+      const hit = !!box && r.left < box[2] && r.right > box[0] && r.top < box[3] && r.bottom > box[1];
+      const t = hit ? (over.get(q) ?? 0) + dt : 0;
+      over.set(q, t);
+      if (t > 0.25) q.classList.add('pp-up');
+    }
+  }
+
   const api = {
     get following() { return following; },
     follow,
@@ -158,6 +190,7 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots }) 
     update(dt, action) {
       followStep(dt);
       rule(dt);
+      clearOfHachi(dt);
       const mode = action ? 'act' : 'follow';
       const words = action ?? (following ? P.stopFollowing : P.walkWithHachi);
       const sub = action ? '' : following ? P.followingSub : P.walkSub;

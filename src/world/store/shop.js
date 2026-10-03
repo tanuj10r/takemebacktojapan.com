@@ -103,6 +103,7 @@ export function makeShop(inside, { doors, lit, colliders = [], entrance = null }
     c.width = 256; c.height = 192;
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
+    t.userData.live = true;          // (redrawn as you pay: the phone keeps its canvas, mobile/lite.js releaseCanvases)
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.225), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
     mesh.position.set(TILL.screen.x, TILL.screen.y, z);
     mesh.rotation.set(0, -Q, 0);

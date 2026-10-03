@@ -121,7 +121,7 @@ class Walk {
     for (const s of SPECIALS) if (s.kind === 'plaza' || s.kind === 'station') wrect(s.x0, s.z0, s.x1, s.z1, K.plaza);
     // [tour-B] the shrine's grounds and Hachi's own garden (and the lane's end at its gate) are places he goes into
     for (const s of SPECIALS) if (s.kind === 'shrine') wrect(s.x0, s.z0 - 0.5, s.x1, s.z1, K.plaza);
-    { const hh = TOWN.hachiHome; wrect(hh.x0, hh.z0 - 0.6, hh.x1, hh.z1, K.plaza); }
+    /*@mini @*/{ const hh = TOWN.hachiHome; wrect(hh.x0, hh.z0 - 0.6, hh.x1, hh.z1, K.plaza); }/*@@*/   // (no garden in the pocket town)
     /* the roads: pavements cheap, asphalt dear, the zebras cheap again */
     const net = this.core?.kit?.net, feats = this.core?.kit?.features;
     if (net) {
@@ -916,7 +916,8 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
     const yaw = yawG + turned;
     const roll = G.roll + X.roll, posture = X.posture;
     const [cy, more] = rollLift(roll, posture);
-    const ox = Math.sin(roll) * cy, oy = cy - Math.cos(roll) * cy + more;
+    // (the lifts below were measured on the pup at its own size: drawn bigger, A.size, they grow with it)
+    const ox = Math.sin(roll) * cy * A.size, oy = (cy - Math.cos(roll) * cy + more) * A.size;
     // (lying, the belly rests on the ground: the pose's posture may be a reaction's, not the one G.y was worked out for)
     // (and tipped back on its haunches or nose-down, the low end stays on the ground)
     // (on its back its paws go, but that is no trot: the stride's bob stays out of it)
@@ -925,7 +926,7 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
     // (and in a bow with its nose down at something, the ball in its garden, the nose)
     const chin = Math.max(0, Math.min(1, posture - 1)) * Math.min(0.034, Math.max(0, (X.nod - 0.1) * 0.12)) * Math.abs(Math.cos(roll))
       + Math.max(0, -posture) * 0.08 * Math.max(0, X.nod);
-    const y = G.y - (G.bob ?? 0) * Math.min(1, Math.abs(roll)) + X.dy + A.tipLift * Math.abs(G.pitch + X.pitch) + postureUp(posture) + chin;
+    const y = G.y - (G.bob ?? 0) * Math.min(1, Math.abs(roll)) + X.dy + (A.tipLift * Math.abs(G.pitch + X.pitch) + postureUp(posture) + chin) * A.size;
     herd.set(0, l.x + ox * Math.cos(yaw), y + oy, l.z - ox * Math.sin(yaw), yaw, G.pitch + (G.bpitch ?? 0) + X.pitch, roll, A.size);
     // (on its side a turn of the head is a turn into the ground: it looks about on its feet or on its back)
     herd.setPose(0, G.ph, X.amp, X.look * Math.abs(Math.cos(roll)), X.nod);
@@ -1381,7 +1382,8 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
   };
   /** Off the bench at once (it was moved: a whistle from afar, a jump to a view, a staged pose). */
   /** The seat's height over the ground the pup stands on there. */
-  const seatLift = () => GB.seat - ground(BENCH.x, BENCH.z);
+  // (drawn bigger, A.size, the curled pup reaches over the seat's edge: a few mm up, so nothing of him dips under its top)
+  const seatLift = () => GB.seat - ground(BENCH.x, BENCH.z) + (A.size - 1) * 0.016;
   const offBench = () => { G.onBench = false; G.lift = 0; G.bed = null; G.hopOff = null; };
   /** Down off the bench, to the forecourt in front of it, in a little hop (it is going somewhere). */
   const hopOffStep = (dt, pose) => {

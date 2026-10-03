@@ -121,6 +121,9 @@ export function buildParking(ctx, parts) {
     parkVehicle(ctx, { kind: kinds[i], x: b.x + r.range(-0.08, 0.08), z: cz, y: AY, ry: river ? -Math.PI / 2 : Math.PI / 2, skew: r.range(-0.03, 0.03), color: cols[i] });
   }
 
+  /* (the pocket town has no Han: a kei car takes his bay) */
+  /*@mini { const b = bays.find((q) => q.han), w = vehicleWheels('kei'); if (b) parkVehicle(ctx, { kind: 'kei', x: b.x, z: b.stopZ - 0.08 - w.R + w.rear, y: AY, ry: Math.PI / 2, skew: 0.02, color: 0xd9665a }); } @*//*@@*/
+
   /* ---- boards: the lot's name and 入口 at the way in, 出口 at the way out ---- */
   const post = (px, pz, ry, boards) => {
     parts.box('post', px - 0.05, px + 0.05, 0, 2.0, pz - 0.05, pz + 0.05);

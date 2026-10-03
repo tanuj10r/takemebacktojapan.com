@@ -250,7 +250,7 @@ export const MOBILE_STRINGS = {
   buttons: { hachi: 'Hachi', time: 'Time', pause: 'Pause', map: 'Map' },
   aria: { hachi: 'Whistle for Hachi', time: 'Change the time of day', pause: 'Pause', map: 'Open the map', act: 'Interact' },
   /* until each has been done once */
-  hints: { walk: 'Walk & turn', look: 'Drag to look around' },
+  hints: { walk: 'Hold to walk', look: 'Drag to look around' },   // (the stick: a thumb held on it walks, Tan 2026-10-03)
   /* the portrait phone's bottom panel (mobile/panel.js) */
   panel: {
     walkWithHachi: 'Walk with Hachi', walkSub: 'he leads, you look',

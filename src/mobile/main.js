@@ -7,7 +7,7 @@ import { setOutlineResolution } from '../core/outline.js';
 import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 import { WALK_SIGNALS } from '../world/signals.js';
 import { buildTown } from './town.js';                      // WORLD: the mini town (the desktop's generator on plan.js's plan)
-import { liteConfig, liteScene, liteFuji, makeCuller, lazyMirrors, census, shrinkCanvases } from './lite.js';
+import { liteConfig, liteScene, liteFuji, makeCuller, lazyMirrors, census, shrinkCanvases, releaseCanvases } from './lite.js';
 import { storePages, pagesRenderer } from '../world/store/pages.js';
 import { tagReflections } from '../world/land/mirror.js';
 import { STRINGS, MOBILE_STRINGS as M } from '../data/strings.js';
@@ -65,6 +65,7 @@ try { lostBefore = localStorage.getItem('takemebacktojapan-lost') === '1'; } cat
 const tier = params.get('tier') ?? (lostBefore ? 'light' : 'full');
 void inApp; void bigIphone;
 if (MOBILE.tiers[tier]) Object.assign(MOBILE, MOBILE.tiers[tier]);
+if (params.has('keepcpu')) MOBILE.keepCpu = true;   // (dev checks that raycast the town's batches: scripts/_guide.mjs)
 // measuring: ?set=key:json;key:json overrides MOBILE tunables (a dev server, or any build with ?stats)
 if ((import.meta.env?.DEV || params.has('stats')) && params.get('set')) for (const kv of params.get('set').split(';')) { const i = kv.indexOf(':'); MOBILE[kv.slice(0, i)] = JSON.parse(kv.slice(i + 1)); }
 diag.stage(`tier ${tier}`);
@@ -104,7 +105,7 @@ canvas.addEventListener('webglcontextrestored', () => {
   meter?.reset();
   diag.stage('context restored');
   for (const p of storePages) p.reset?.();                // (the konbini's pages are painted again: mobile/pages.js)
-  if (!MOBILE.keepCpu || !world) return;
+  if (!MOBILE.keepCpu || !world || released?.out.any) return;   // (the canvases have gone: the card's Reload)
   contextLost = false;
   document.documentElement.classList.remove('gate-lost');
   shell?.setLost(false);
@@ -341,6 +342,11 @@ function lensVfov(aspect) {
   const want = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(MIN_HFOV / 2)) / aspect) * 180 / Math.PI;
   return Math.min(PORTRAIT_VFOV, Math.max(PLAYER_VFOV, want));
 }
+/* (the portrait phone, Tan 2026-10-03: Hachi sat cut off at the picture's foot, under the cards) In portrait the
+ * lens is ~77° tall, and the famous view's lift (looking up 9°, for a landscape frame) put the horizon four fifths
+ * of the way down: half the picture sky.  There the view looks `portraitTilt` lower, so the road and the pup come up
+ * into the frame; Fuji's peak stays a quarter of the way down. */
+const viewPitch = (p) => p - (MOBILE.portrait || innerHeight > innerWidth ? MOBILE.portraitTilt ?? 0 : 0);
 function updateProjection() {
   camera.fov = lensVfov(camera.aspect);
   camera.updateProjectionMatrix();
@@ -356,7 +362,7 @@ function enterHero(name) {
   player.pos.set(spot.pos[0], world.heightAt(spot.pos[0], spot.pos[2]), spot.pos[2]);
   player.vel.set(0, 0, 0);
   player.yaw = spot.yaw;
-  player.pitch = spot.pitch;
+  player.pitch = viewPitch(spot.pitch);
   player.bob = 0;
   player.holdLook = false;
   famousView = { x: player.pos.x, z: player.pos.z };
@@ -398,7 +404,7 @@ function viewSpot(dt) {
     player.pos.x = f.x + (VIEW_SPOT.pos[0] - f.x) * k;
     player.pos.z = f.z + (VIEW_SPOT.pos[2] - f.z) * k;
     player.yaw = f.yaw + Math.atan2(Math.sin(VIEW_SPOT.yaw - f.yaw), Math.cos(VIEW_SPOT.yaw - f.yaw)) * k;
-    player.pitch = f.pitch + (VIEW_SPOT.pitch - f.pitch) * k;
+    player.pitch = f.pitch + (viewPitch(VIEW_SPOT.pitch) - f.pitch) * k;
     player.applyCamera(0);
     if (gliding.t >= 1.3) { gliding = null; player.scripted = false; enterHero(lastView); }
     return;
@@ -602,6 +608,7 @@ function frame(now = 0) {
    * behind its walls goes; the konbini's quad page whole within reach of its glass, a small copy from the street */
   culler.update(camera.position, 3, inStore ? MOBILE.store.behind : null);
   mirrors.update(tick);
+  released?.tick(tick);
   lite.storeQuads?.level(Math.hypot(camera.position.x - LAWSON.x, camera.position.z - LAWSON.frontZ + LAWSON.depth / 2) < (lite.storeQuads.near ? MOBILE.store.quadsFar : MOBILE.store.quadsNear), inStore || !!shop?.visiting);
   shell.update(dt, { inStore });                           // SHELL: the cards' song, the map, the context button, the chips, the countdown, the postcard
   sound.update(dt, { camera, inside: inStore, look: lookName, cooler: shop?.coolerAt });
@@ -623,6 +630,9 @@ globalThis.__sys?.('lite-scene');
 culler = makeCuller(scene, world, renderer);
 globalThis.__sys?.('lite-culler');
 const mirrors = lazyMirrors(scene, renderer);        // WORLD: the water's mirrors drawn only while their water is on the screen
+/* WORLD: nothing streams in the pocket town (MOBILE.stream 0): each painted page's canvas goes once the GPU has it
+ * (lite.js releaseCanvases; ?keepcanvas keeps them) */
+const released = !MOBILE.stream && !params.has('keepcanvas') ? releaseCanvases(scene, renderer) : null;
 viewW = 0;                                       // (the resize below hands the culler the screen's pixels a metre)
 world.fuji.ready?.then((m) => { lite.fuji = liteFuji(m); });
 if (world.reflectRect) {
@@ -666,7 +676,7 @@ if (import.meta.env?.DEV || params.has('stats')) {
   window.__m = {
     scene, camera, renderer, pipeline, world, player, sound, hud, shell, THREE, marks, perf, applyLook, enterHero, setTime,
     hanShow, GUIDE, diag, meter, get scale() { return renderScale; }, touch: shell.touch,
-    lite, culler, mirrors, tier, storePages, census: () => census(scene, renderer),
+    lite, culler, mirrors, tier, get released() { return released?.out; }, storePages, census: () => census(scene, renderer),
     /** dev (scripts/_mini.mjs): stand at a spot and draw it: { x, z, yaw, pitch, look, lift, train, trainX } */
     goto(o = {}) {
       if (o.look && o.look !== lookName) applyLook(o.look);

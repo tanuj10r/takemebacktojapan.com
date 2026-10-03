@@ -134,5 +134,5 @@ export function buildLand(ctx) {
     if (Math.max(size.x, size.z) > 60) o.userData.ground = true;
   });
   buildHills(lctx);
-  buildHan(lctx);                          // Han and the RX-7, in the car park (world/han/)
+  /*@mini @*/buildHan(lctx);/*@@*/                          // Han and the RX-7, in the car park (world/han/; not in the pocket town)
 }

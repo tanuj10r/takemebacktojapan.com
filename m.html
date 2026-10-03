@@ -53,6 +53,7 @@
    * the panel in the bottom quarter; the play screen's own parts move up out of the panel's way */
   body.pui #view { height: 75dvh; bottom: auto; }
   body.pui .stick, body.pui .knob { z-index: 7; }      /* (the two-thumbs scheme's stick sits in the panel) */
+  body.pui .stick b { top: auto; bottom: -2px; transform: translate(-50%, 0); padding: 2px 8px; font-size: 9.5px; }   /* (its label inside the panel, not under its edge) */
   body.pui .mh-act, body.pui .mh-top [data-b="whistle"], body.pui .mh-top [data-b="pause"] { display: none !important; }
   body.pui .mh-cross { top: 37.5dvh; }
   body.pui .mh-menu { bottom: calc(25dvh + 10px) !important; }

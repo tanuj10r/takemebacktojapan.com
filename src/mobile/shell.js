@@ -247,7 +247,7 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
   /* ---- touch; playing or paused ---- */
   /* the portrait phone (Tan, 2026-10-03): the bottom quarter's panel, its three control schemes (mobile/panel.js) */
   const spotList = () => world.experiences.list.concat(world.lawson?.experiences?.list ?? [], world.townExperiences?.list ?? []);
-  const panel = MOBILE.portrait ? createPanel({ player, world, hud, act: () => act(), whistle: () => whistle(), pause: () => pause(), spots: spotList }) : null;
+  const panel = MOBILE.portrait ? createPanel({ player, world, hud, act: () => act(), whistle: () => whistle(), pause: () => pause(), spots: spotList, camera }) : null;
   if (panel) {
     document.body.classList.add('pui');
     // turned sideways: ask to be turned upright
