@@ -89,7 +89,7 @@ export function createShell({ canvas, camera, world, scene = null, held = () => 
   } catch { /* optional */ }
   const hud = createMobileHud({ volume: volumeStep });
   watchMediaElements();
-  const sound = createSound({ volume: volumeGain(volumeStep) });
+  const sound = createSound({ volume: volumeGain(volumeStep), release: MOBILE.soundRelease });   // (decoded sounds let go when far: core/sound.js)
   // the sounds' names (ui/soundLabels.js, the desktop's): wrapped before the world's queued zones pass through
   const labels = watchSoundLabels(sound, { names: STRINGS.soundNames, isPlaying: () => player.locked, show: createSoundLabels(hud.root) });
   soundBus.attach(sound);

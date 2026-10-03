@@ -35,7 +35,7 @@ export function falloff(d, { near, far }) {
 const BEDS = { wind: 0.14, birds: 0.26, 'night-insects': 0.21 };
 const BED_OF_LOOK = { day: 'birds', blue: 'night-insects' };
 
-export function createSound({ volume = 0.5 } = {}) {
+export function createSound({ volume = 0.5, release = 0 } = {}) {
   let ac = null, master, world, sfxBus, outBus, outLow, outGain, inGain, musicGain, reverb, wet;
   let theme = null, menuOn = false;
   let manifest = {}, muted = volume <= 0.001, lastAudible = volume > 0.001 ? volume : 0.5;
@@ -69,6 +69,30 @@ export function createSound({ volume = 0.5 } = {}) {
     const d = manifest[name]?.duration ?? b.duration;
     const pad = Math.min(2112 / b.sampleRate, Math.max(0, b.duration - d));
     return [pad, Math.min(b.duration, pad + d)];
+  }
+
+  /* Letting go (the phone: createSound({ release }), Tan 2026-10-04): a decoded file is raw PCM, ~0.18 MB a
+   * second, and every one stayed for good (48 MB after a walk round the pocket town).  A place's loop, a placed
+   * line of 5 s or more, a time of day's bed not in use: once the listener is `release` m beyond where it can be
+   * heard and nothing is playing it, its decoded copy goes; within half that margin it is fetched (the browser's
+   * cache) and decoded again, so it is back before its range begins.  The wind (always on) and short sounds stay. */
+  const lastAt = new Map();                     // a placed file: where it last played and how far it carries
+  let sweepT = 0;
+  const drop = (name) => { if (buffers.has(name)) { buffers.delete(name); loading.delete(name); } };
+  const playing = (b) => { for (const r of held) if (r.b === b) return true; return false; };
+  function sweep() {
+    const M = release, far = (x, z, f) => Math.hypot(x - listener.x, z - listener.z) - f;
+    for (const z of zones) {
+      const d = far(z.x, z.z, z.far), L = z.node;
+      if (d > M && (!L || (!L.on && !L.src))) drop(z.name);
+      else if (d < M / 2 && manifest[z.name] && !buffers.has(z.name)) buffer(z.name);
+    }
+    for (const [k, name] of Object.entries(BED_OF_LOOK)) { const L = beds[name]; if (L && k !== state.look && !L.on && !L.src) drop(name); }
+    if (state.look !== 'golden') drop('crows');
+    for (const [file, p] of lastAt) {
+      const b = buffers.get(file);
+      if (b && b.duration >= 5 && far(p.x, p.z, p.far) > M && !playing(b)) drop(file);
+    }
   }
 
   /* ------------------------ the procedural sounds ------------------------ */
@@ -257,6 +281,7 @@ export function createSound({ volume = 0.5 } = {}) {
     const h = o._h ?? { ended: false };      // the caller's handle: `ended` once it has played out (QA-006)
     if (!ac || muted) { h.ended = true; return h; }
     const v = at && range ? { at, range, gain, indoor } : null;
+    if (file && v) lastAt.set(file, { x: at.x, z: at.z, far: Math.max(range.far, lastAt.get(file)?.far ?? 0) });   // (kept from as far as it was warmed)
     let k = gain, f = 20000;
     if (v) {
       if (Math.hypot(at.x - listener.x, at.z - listener.z) >= range.far) { h.ended = true; return h; }   // beyond its range it does not play at all
@@ -452,6 +477,8 @@ export function createSound({ volume = 0.5 } = {}) {
 
   /* ------------------------------ the api ------------------------------ */
   const api = {
+    /** The decoded files held now: { mb, names } (a phone's memory check). */
+    decoded() { let n = 0; for (const b of buffers.values()) n += b.numberOfChannels * b.length * 4; return { mb: +(n / 1048576).toFixed(1), names: [...buffers.keys()] }; },
     /**
      * A looping track that belongs to a place (Tan's experiences): heard from
      * `far` in, full from `near`, nowhere else.  { x, z, y, near, far,
@@ -472,8 +499,9 @@ export function createSound({ volume = 0.5 } = {}) {
      * not the recipe.  Waits for the list of files first: asked for before it
      * has arrived (the first click, near the store), it used to fetch nothing
      * and the self-checkout's first run was a tap (2026-09-28). */
-    async preload(names) {
+    async preload(names, at = null) {
       if (!ac) return false;
+      if (at) for (const n of names) lastAt.set(n, at);   // (where it belongs: a phone lets it go far from there, sweep)
       await manifestReady;
       const got = await Promise.all(names.map((n) => (manifest[n] ? buffer(n) : null)));
       return got.every(Boolean);
@@ -564,6 +592,7 @@ export function createSound({ volume = 0.5 } = {}) {
       const t = now(), L = ac.listener;
       listener.x = camera.position.x; listener.y = camera.position.y; listener.z = camera.position.z;
       for (const z of zones) zoneTick(z);
+      if (release > 0 && (sweepT += dt) > 1) { sweepT = 0; sweep(); }
       camera.getWorldDirection(_f);
       if (L.positionX) {
         L.positionX.setTargetAtTime(listener.x, t, 0.02); L.positionY.setTargetAtTime(listener.y, t, 0.02); L.positionZ.setTargetAtTime(listener.z, t, 0.02);

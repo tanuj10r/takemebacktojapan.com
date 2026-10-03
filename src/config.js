@@ -1066,7 +1066,8 @@ export const MOBILE = {
   /* (Tan, 2026-10-03) the phone is a glimpse in portrait: the town in the top three quarters, a panel of controls and the
    * guide line in the bottom quarter (mobile/panel.js); turned sideways it asks to be turned back */
   portrait: true,
-  portraitTilt: 0.18,        // rad: the famous view's pitch, lowered in portrait (mobile/main.js viewPitch)
+  portraitTilt: 0.18,
+  soundRelease: 25,          // m beyond a sound's reach where its decoded copy goes (core/sound.js; 0: never)        // rad: the famous view's pitch, lowered in portrait (mobile/main.js viewPitch)
   route: true,
   /* The mini town (src/mobile/plan.js): the desktop's plan with the block row south of lane 112 taken out;
    * everything south of it (the plaza, the station, the line, the crossing, Hachi's home, 鏡池, the bench)

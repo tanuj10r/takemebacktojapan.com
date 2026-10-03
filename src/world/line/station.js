@@ -671,8 +671,9 @@ export function buildStation(ctx, { kit, service, sets }) {
       // fetch and decode the file as you come near, so its first play is on time
       if (!warmed && d < 80 && soundBus.ready) {
         warmed = true;
-        soundBus.preload(['train-nextstop']);
+        soundBus.preload(['train-nextstop'], { x: listenW.x, z: listenW.z, far: 80 });   // (where: a phone lets it go far off, core/sound.js)
       }
+      if (warmed && d > 90) warmed = false;      // (and warms it again on the way back)
       // the station's own announcements dim while you listen at the spot (full dim within 1.5 m, back by 6 m)
       const k = Math.min(1, Math.max(0, (d - 1.5) / 4.5));
       const lvl = SOUND.station.level * (SOUND.station.duck + (1 - SOUND.station.duck) * k);
