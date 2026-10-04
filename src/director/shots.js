@@ -464,11 +464,15 @@ const C = [
     // Fuji to rise over it (on the store's own forecourt its front hides the mountain); no traffic runs the road
     // the camera: 0.9 m, FOV 35, at his eye height (0.40 m, measured: the brief's 0.32 was an estimate, and from there
     // it looks up his chin and loses Fuji), aimed a little above his eyes so he sits just under the middle
-    at: { x: 1.2, z: 18.6 }, bearing: 5, dist: 0.9, fov: 35, camY: 0.4, lookY: 0.44,
+    /* (Tan, 2026-10-05: "Hachi's look in the game is better... the background can be zoomed out so the famous view is
+     * visible") the lens was 0.9 m off at his eye height, looking up his chin.  Now it stands back and above, looking
+     * down at him as you do in the game, and wide: he sits in the lower part of the frame, NIPPON across the middle
+     * and Fuji over it. */
+    at: { x: -1.2, z: 17.4 }, bearing: 9, dist: 1.15, fov: 54, camY: 0.72, lookY: 0.6, lookAhead: 1.2,
     setup({ pup, env }) {
       const p = this.at;
       const b = this.bearing * Math.PI / 180;                    // (degrees right of -z) Fuji's peak at 9.8: to his right
-      const cx = p.x - Math.sin(b) * 0.9, cz = p.z + Math.cos(b) * 0.9;
+      const cx = p.x - Math.sin(b) * this.dist, cz = p.z + Math.cos(b) * this.dist;
       const yaw = Math.atan2(cx - p.x, cz - p.z);
       pup.reset({ x: p.x, z: p.z, yaw, posture: 1 });
       const src = (side) => () => V(p.x + side * 1.6, 0.8, p.z + 0.6);
@@ -509,8 +513,9 @@ const C = [
       pup.react('slowBlink', 20.4, { dur: 0.9, keep: true });
       return {
         rig: (t) => {
-          const d = this.dist * (1 - 0.15 * ease(t / C_LEN));       // the slow push-in, 15% closer by the end
-          return { p: V(p.x - Math.sin(b) * d, this.camY, p.z + Math.cos(b) * d), l: V(p.x, this.lookY, p.z), fov: this.fov };
+          const d = this.dist * (1 - 0.08 * ease(t / C_LEN));       // a slow push-in, 8% closer by the end
+          const la = this.lookAhead ?? 0;
+          return { p: V(p.x - Math.sin(b) * d, this.camY, p.z + Math.cos(b) * d), l: V(p.x + Math.sin(b) * la, this.lookY, p.z - Math.cos(b) * la), fov: this.fov };
         },
         update: (t, dt, e) => {
           this._t = t;
@@ -606,7 +611,7 @@ function sandoPiece(env, t, pup) {
 export const VERSIONS = {
   A: { title: "Hachi's Big Day", shots: A, hook: "Hachi's big day 🐾", endLen: 1.5 },
   B: { title: 'Hachi Fears Nothing', shots: B },
-  C: { title: 'Hachi Hears Japan', shots: C, cues: C_CUES, hook: 'Hachi hears Japan 🔊', endLen: 1.7 },
+  C: { title: 'Hachi Hears Japan', shots: C, cues: C_CUES, hook: 'Hachi hears Japan 🔊', endLen: 1.7, capY: 0.5, endY: 0.47 },
 
 };
 export { C_CUES };

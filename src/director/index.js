@@ -131,6 +131,10 @@ export function startDirector(G) {
     clip: (c) => sound.clip(c),
   };
   env.env = env;                                            // (shots take { pup, han, env, ... })
+  /* (Tan, 2026-10-05: "Hachi looks very bad in this... the shadows on Hachi's face") the town's shadow map is 4 cm a
+   * texel: a metre from the lens it lay on him as diagonal stripes.  In these shots he takes no shadow from it (his
+   * own toon shading and his contact shadow stay). */
+  if (guide.herd?.mesh) { guide.herd.mesh.receiveShadow = false; for (const m of [guide.herd.mesh.material].flat()) m.needsUpdate = true; }
   const RANDOM = Math.random;
   let shot = null;          // { def, rig, update, t }
   function begin(def, { seed = 1 } = {}) {
@@ -198,7 +202,7 @@ export function startDirector(G) {
     // the words (overlay.js): a take's hook, its sounds' names, its end card; `S.words` off for a clean plate
     if (S.words !== false && shot && S.at !== null) {
       const V = VERSIONS[S.version], total = V.shots.reduce((a, s) => a + s.dur, 0);
-      drawOverlay(ctx2, size.w, size.h, { hook: V.hook ?? null, cues: V.cues ?? [], t: S.at + shot.t, total, title: GAME.title, url: 'takemebacktojapan.com', endLen: V.endLen ?? 1.8 });
+      drawOverlay(ctx2, size.w, size.h, { hook: V.hook ?? null, cues: V.cues ?? [], t: S.at + shot.t, total, title: GAME.title, url: 'takemebacktojapan.com', endLen: V.endLen ?? 1.8, capY: V.capY, endY: V.endY });
     }
   }
   /** one step of the world and the shot, `dt` of shot time (the world slowed with it) */
@@ -345,12 +349,12 @@ export function startDirector(G) {
   }, true);
 
   /* ---------------- the deterministic render (Version C's 4K; any version at 1080x1920) ---------------- */
-  async function renderHiRes({ w = S.version === 'C' ? 2160 : 1080, h = S.version === 'C' ? 3840 : 1920 } = {}) {
+  async function renderHiRes({ w = S.version === 'C' ? 2160 : 1080, h = S.version === 'C' ? 3840 : 1920, bitrate = null, tag = '' } = {}) {
     stop();
     if (S.version === 'C') captions();
     S.det = true;
     panel.rec(true);
-    setSize(w, h, 1);
+    setSize(w, h, w * h > 2.2e6 ? 1 : 2);        // (1080: drawn at twice the size and brought down, for clean edges; 4K as it is)
     const list = shotsOf();
     const total = list.reduce((a, s) => a + s.dur, 0);
     const heard = [];
@@ -359,7 +363,7 @@ export function startDirector(G) {
     const take = () => pup.sounds().filter((v) => v.t > 0 && v.t <= list[i].dur).map((v) => ({ ...v, t: v.t + at }));
     try {
       await renderDeterministic({
-        name: `hachi-${S.version}-${w}x${h}`, w, h, fps: 60, total, canvas: out, sound,
+        name: `hachi-${S.version}-${w}x${h}${tag}`, w, h, fps: 60, total, canvas: out, sound, bitrate,
         version: VERSIONS[S.version],
         // the pup's voice, rendered offline at the times its reactions ask (the same schedule the real-time take plays):
         // each shot's list is taken as it ends (shots add to it as they run), at the shot's place in the version

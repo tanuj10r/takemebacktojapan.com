@@ -32,7 +32,7 @@ function plate(c, x, y, w, h, r, alpha) {
  * @param W, H   its size
  * @param o      { hook, cues, t, total, title, url, endLen }
  */
-export function drawOverlay(c, W, H, { hook = null, cues = [], t, total, title, url, endLen = 1.8 }) {
+export function drawOverlay(c, W, H, { hook = null, cues = [], t, total, title, url, endLen = 1.8, capY = 0.705, endY = 0.712 }) {
   const k = W / 1080;
   c.save();
   c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -58,7 +58,7 @@ export function drawOverlay(c, W, H, { hook = null, cues = [], t, total, title, 
     const pop = 1 + 0.06 * (1 - ease((t - q.t) / 0.22));
     c.font = `700 ${66 * k}px ${JP}`; const wj = c.measureText(jp).width;
     c.font = `600 ${34 * k}px ${UI}`; const we = c.measureText(en ?? '').width;
-    const w = Math.max(wj, we) + 92 * k, h = 168 * k, y = H * 0.705;
+    const w = Math.max(wj, we) + 92 * k, h = 168 * k, y = H * capY;
     c.save();
     c.translate(W / 2, y); c.scale(pop, pop); c.translate(-W / 2, -y);
     plate(c, W / 2, y, w, h, 36 * k, a);
@@ -75,7 +75,7 @@ export function drawOverlay(c, W, H, { hook = null, cues = [], t, total, title, 
   if (e > 0.01) {
     c.globalAlpha = 0.34 * e; c.fillStyle = '#2c2346'; c.fillRect(0, 0, W, H);
     c.globalAlpha = e;
-    const y = H * 0.712 + (1 - e) * 18 * k;
+    const y = H * endY + (1 - e) * 18 * k;
     c.font = `700 ${84 * k}px ${TITLE}`;
     const w = Math.max(c.measureText(title).width, 620 * k) + 96 * k;
     plate(c, W / 2, y, w, 250 * k, 44 * k, e);

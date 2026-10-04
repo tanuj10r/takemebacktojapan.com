@@ -60,13 +60,13 @@ export function makeRecorder({ canvas, sound, sfxTap, onState }) {
 }
 
 /* ---------------------------------------- the deterministic render ---------------------------------------- */
-export async function renderDeterministic({ name, w, h, fps = 60, total, canvas, sound, version, seek, progress, voices }) {
+export async function renderDeterministic({ name, w, h, fps = 60, total, canvas, sound, version, seek, progress, voices, bitrate = null }) {
   const n = Math.round(total * fps);
   const chunksV = [], chunksA = [];
   let vConfig = null, aConfig = null;
   // the video encoder: H.264 High, level 5.1 (2160x3840 fits), about 45 Mbps at 4K
   const codec = w * h > 2.2e6 ? 'avc1.640033' : 'avc1.64002A';
-  const vcfg = { codec, width: w, height: h, bitrate: w * h > 2.2e6 ? 45e6 : 20e6, framerate: fps, avc: { format: 'avc' }, latencyMode: 'quality', bitrateMode: 'variable' };
+  const vcfg = { codec, width: w, height: h, bitrate: bitrate ?? (w * h > 2.2e6 ? 45e6 : 20e6), framerate: fps, avc: { format: 'avc' }, latencyMode: 'quality', bitrateMode: 'variable' };
   const sup = await VideoEncoder.isConfigSupported(vcfg);
   if (!sup.supported) throw new Error('H.264 at this size is not supported by this browser: ' + JSON.stringify(vcfg));
   const venc = new VideoEncoder({

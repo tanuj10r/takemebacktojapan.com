@@ -1,6 +1,6 @@
 // dev: render a promo video with Director Mode's frame-by-frame renderer (src/director/, ?director) and save the file.
 //
-//   node scripts/_promo-render.mjs <version A|C> <width> <height> [outdir]
+//   node scripts/_promo-render.mjs <version A|C> <width> <height> [Mbps]
 //
 // Exactly 60 fps whatever the laptop is doing (each frame is drawn, then encoded), H.264 + AAC in an MP4, the words
 // burned in (overlay.js).  Its own dev server (port 5192) and headless Chrome, on the shared browser lock.
@@ -10,8 +10,8 @@ import { createServer } from 'vite';
 import { chromium } from 'playwright';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const [version = 'C', w = '1080', h = '1920'] = process.argv.slice(2);
-const OUT = path.resolve(process.argv[5] ?? path.join(ROOT, 'docs', 'promo', 'out'));
+const [version = 'C', w = '1080', h = '1920', mbps = ''] = process.argv.slice(2);      // (mbps: the video's bit rate; blank: 20 at 1080, 45 at 4K)
+const OUT = path.resolve(path.join(ROOT, 'docs', 'promo', 'out'));
 fs.mkdirSync(OUT, { recursive: true });
 const LOCK = '/tmp/lawson-browser.lock';
 let mine = false;
@@ -36,12 +36,12 @@ try {
   await page.waitForTimeout(3000);
   await document_fonts(page);
   const t0 = Date.now();
-  const r = await page.evaluate(async ([v, w, h]) => {
+  const r = await page.evaluate(async ([v, w, h, mbps]) => {
     const D = window.__director;
     D.S.version = v;
-    await D.renderHiRes({ w, h });
+    await D.renderHiRes({ w, h, bitrate: mbps ? mbps * 1e6 : null, tag: mbps ? '-share' : '' });
     return window.__lastRecording ?? null;
-  }, [version, +w, +h]);
+  }, [version, +w, +h, +mbps]);
   await page.waitForTimeout(4000);
   console.log('rendered', JSON.stringify(r), 'in', Math.round((Date.now() - t0) / 1000) + ' s', 'errors', JSON.stringify(errs.slice(0, 4)));
   if (!saved.some((f) => f.endsWith('.mp4'))) process.exitCode = 1;
