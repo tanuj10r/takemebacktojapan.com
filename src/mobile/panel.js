@@ -1,4 +1,4 @@
-import { GUIDE } from '../world/animals/guide.js';
+import { GUIDE, Field } from '../world/animals/guide.js';
 import { MOBILE_STRINGS as M } from '../data/strings.js';
 import { TUNE } from './controls/tune.js';
 
@@ -98,9 +98,12 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots, ca
   /* ---- Walk with Hachi (Tan, 2026-10-04) ----
    * It stays on through the tour: into the ring where he waits, stood there while he does (the place's own action
    * on the button), and after him again when he goes on.  A drag looks about and it goes on; a thumb held on the
-   * stick, or slid up, keeps it and quickens the pace; pulled back or across, the walk is yours again.  The way is
-   * his trail (the farthest point of it in plain sight, with room for your shoulders); with no headway for 2 s you
-   * are put down a couple of metres behind him (a blink). */
+   * stick, or slid up, keeps it and quickens the pace; pulled back or across, the walk is yours again.
+   * The way (Tan, 2026-10-04: "obstacles come in between and I get stuck... the respawn looks odd"): not a straight
+   * line to him but the way round, as he finds his own: a distance field on his walk grid grown from where he is
+   * (or from the place he waits at), grown again a few frames at a time as he goes (the last one used meanwhile);
+   * you go down it, aimed at the farthest point along it that is clear with room for your shoulders.  Only if that
+   * gets you nowhere for 6 s (it should not) are you put down behind him. */
   let following = false;
   const crumbs = [], stuck = { t: 0, x: 0, z: 0 };
   /* at a stop, done (Tan: "when you complete an experience, Hachi doesn't automatically move on"): he lingers until you
@@ -127,6 +130,9 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots, ca
     crumbs.length = 0;
     stuck.t = 0;
     if (!on) player.steer = null;
+    // (Tan, 2026-10-04: at the platform, after the train, "the moment I click on Walk with Hachi, the tour should
+    // continue") turned on while he lingers at a place you have had: on to the next, now
+    if (on && GUIDE.tourInfo?.()?.state === 'linger') GUIDE.moveOn?.();
   }
   const angle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -136,8 +142,39 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots, ca
     const L = dist(a, b) || 1, nx = -(b.z - a.z) / L * 0.3, nz = (b.x - a.x) / L * 0.3;
     return W.sight(a.x + nx, a.z + nz, b.x + nx, b.z + nz) && W.sight(a.x - nx, a.z - nz, b.x - nx, b.z - nz);
   };
+  /* your own way to him: two fields (one in use, one growing), each ~1.2 MB */
+  const way = { use: null, grow: null, useAt: null, growAt: null };
+  function wayTo(W, x, z) {
+    way.use ??= new Field(W); way.grow ??= new Field(W);
+    const near = (a) => a && Math.hypot(a.x - x, a.z - z) < 2.5;
+    if (!near(way.growAt) && !(way.useAt && near(way.useAt) && way.use.ready)) {
+      const c = W.nearest(x, z, 3);
+      if (c >= 0) { way.grow.start([c], 160); way.growAt = { x, z }; }
+    }
+    if (way.growAt && !way.grow.ready) way.grow.work(2.5);
+    if (way.growAt && way.grow.ready && way.growAt !== way.useAt) { [way.use, way.grow] = [way.grow, way.use]; way.useAt = way.growAt; way.growAt = null; }
+    return way.use?.ready && way.useAt ? way.use : null;
+  }
+  /** Down the field from where you stand: the farthest of the next cells still clear for your shoulders. */
+  function downWay(W, F, p) {
+    let c = W.cell(p.x, p.z);
+    if (c < 0 || !(F.d[c] < 1e9)) c = W.nearest(p.x, p.z, 1.5, (i) => F.d[i] < 1e9);
+    if (c < 0) return null;
+    let best = null;
+    for (let k = 0; k < 24; k++) {
+      const n = F.next(c);
+      if (n < 0) break;
+      c = n;
+      const q = W.at(c);
+      if (k < 2 || clear(W, p, q)) best = q;
+      else if (k > 8) break;
+    }
+    return best;
+  }
   const view = document.getElementById('view');
+  let blinks = 0;
   function catchUp(h, W) {
+    blinks++;
     const p = player.pos, d = dist(h, p) || 1;
     const c = W.nearest(h.x + (p.x - h.x) / d * 2.2, h.z + (p.z - h.z) / d * 2.2, 3);
     if (c < 0) return;
@@ -173,17 +210,26 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots, ca
       if (dist(t, p) < 0.8) { rest(); return; }
       goal = clear(W, p, t) ? t : null;
     }
-    if (!goal) {
+    // where you are going: the place he waits at, else him
+    const T = waiting ? info.target : h;
+    if (!waiting) {
       // (a couple of metres behind him; up to him while he waits for you to set off or to catch up, which is what
       // starts him again: he and you stood waiting for each other)
       if (dist(h, p) < (['ready', 'wait', 'home', 'intro'].includes(info?.state) ? 1.0 : 2.4)) { rest(); return; }
+    }
+    if (!goal) {
+      const F = wayTo(W, T.x, T.z);
+      goal = F ? downWay(W, F, p) : null;
+    }
+    if (!goal) {
+      // (until the first field has grown: his trail)
       while (crumbs.length > 1 && dist(crumbs[0], p) < 0.7) crumbs.shift();
       goal = crumbs[0];
       for (let i = crumbs.length - 1; i > 0; i--) if (clear(W, p, crumbs[i])) { goal = crumbs[i]; break; }
     }
     if (!goal) { rest(); return; }
-    // no headway (a corner his walk takes and your shoulders don't): put down behind him
-    if (dist(p, stuck) > 0.5) { stuck.x = p.x; stuck.z = p.z; stuck.t = 0; } else if ((stuck.t += dt) > 2) { catchUp(h, W); stuck.t = 0; return; }
+    // no headway at all for 6 s (the last resort): put down behind him
+    if (dist(p, stuck) > 0.5) { stuck.x = p.x; stuck.z = p.z; stuck.t = 0; } else if ((stuck.t += dt) > 6) { catchUp(h, W); stuck.t = 0; return; }
     const dx = goal.x - p.x, dz = goal.z - p.z, L = Math.hypot(dx, dz) || 1;
     player.steer = { x: dx / L, z: dz / L, slow: 1 };
     // (the view turns the way you go, unless you have looked about in the last 3 s)
@@ -254,6 +300,8 @@ export function createPanel({ player, world, hud, act, whistle, pause, spots, ca
 
   const api = {
     get following() { return following; },
+    /** dev: how often the last resort was needed */
+    get blinks() { return blinks; },
     follow,
     onScheme: null,
     /** each frame: `action` the words of what can be done here (or null) */

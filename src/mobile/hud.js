@@ -183,7 +183,13 @@ const CSS = `
     .mh-pause .col { flex: none; padding: 18px 20px 16px; }
     .mh-pause .col + .col { border-left: 0; border-top: 1.5px solid #efe5ea; }
     .mh-pause .url { margin-top: 12px; padding-top: 0; }
+    /* (Tan, 2026-10-04) upright, the start card's picture above the pause card, as on the start screen (the blurred
+     * town above it said nothing) */
+    .mh-pause { flex-direction: column; justify-content: flex-end; padding: 0; background: #2c2346; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .mh-pause .mh-art { display: block; flex: 1 1 0; min-height: 0; width: 100%; object-fit: cover; object-position: 46% 86%; }
+    .mh-pause .card { width: 100%; max-height: none; margin-top: -14px; border-radius: 22px 22px 0 0; padding-bottom: var(--safe-b); flex: none; }
   }
+  .mh-art { display: none; }
   @media (prefers-reduced-motion: reduce) {
     .mh-post { animation: none; box-shadow: 0 10px 24px -12px rgba(20,10,40,.6), 0 0 0 3px #ffdd57; }
     .mh-act.on button::before, .mh-btn.ping::before { animation: none; opacity: 0; }
@@ -227,6 +233,7 @@ export function createMobileHud({ volume = 50 } = {}) {
   pause.setAttribute('aria-modal', 'true');
   pause.setAttribute('aria-labelledby', 'mh-pause-title');
   pause.innerHTML = `
+    <img class="mh-art" src="keyart-portrait.webp" alt="" width="1080" height="1440" decoding="async" />
     <section class="card scroll-ok">
       <div class="col">
         <span class="badge">${M.paused}</span>

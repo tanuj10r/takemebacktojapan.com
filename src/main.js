@@ -985,7 +985,7 @@ if (import.meta.env?.DEV) {
   /** The z-fighting detector (scripts/_zfight.mjs, src/dev/zfight.js): one pose, drawn N times a hair apart. */
   window.__zfight = async (pose, o) => (await import('./dev/zfight.js')).zfight({ scene, camera, renderer, pipeline, world, sky, canvas }, pose, o);
   /** ?poster: stage the key art's diorama (src/dev/poster.js); resolves to its `__shot` options. */
-  if (POSTER) window.__poster = async () => (await import('./dev/poster.js')).stagePoster({ scene, world, applyLook });
+  if (POSTER) window.__poster = async (o = {}) => { const m = await import('./dev/poster.js'); return m.stagePoster({ scene, world, applyLook, ...(o.portrait ? { layout: { ...m.POSTER_PORTRAIT, ...(o.layout ?? {}) }, aspect: 3 / 4 } : {}) }); };
 
   /* ?traincheck: run the service fast in fixed steps and check it (SPEC M2c).
    * Events with their times, the dwell and headway, and at every step: is

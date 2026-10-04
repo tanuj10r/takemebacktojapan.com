@@ -11,7 +11,9 @@
  *   keyart-1280.webp       small windows and the phone page's card  (<= 130 KB; srcset)
  *   keyart-1920.webp       every card, every screen                 (<= 250 KB)
  *   keyart-2560.webp       the cards on large high-DPI screens      (<= 500 KB; srcset)
- *   keyart-portrait.webp   the phone card: a 9:16 crop round Fuji   (<= 160 KB)
+ *   keyart-portrait.webp   the phone card upright: its own 3:4 frame (--portrait; src/dev/poster.js POSTER_PORTRAIT)
+ *
+ *   node scripts/keyart.mjs --portrait     render the upright master (assets/keyart/keyart-portrait-1440.png) and encode it
  *
  * Headless system Chrome and its own dev server (port 5197), under the
  * shared browser lock; both are closed however the run ends.
@@ -23,15 +25,17 @@ import { chromium } from 'playwright';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const ENCODE_ONLY = process.argv.includes('--encode');
-const MASTER = path.join(ROOT, 'assets', 'keyart', 'keyart-3840.png');
-const W = 3840, H = 2160;
+const PORTRAIT = process.argv.includes('--portrait');
+const MASTER = path.join(ROOT, 'assets', 'keyart', PORTRAIT ? 'keyart-portrait-1440.png' : 'keyart-3840.png');
+const W = PORTRAIT ? 1440 : 3840, H = PORTRAIT ? 1920 : 2160;
 /* each file: its size, the master's crop (fractions: x0, width; full height), the byte budget */
-const OUT = [
+const OUT = PORTRAIT ? [
+  // (Tan, 2026-10-04: the 9:16 crop showed half of Fuji above the phone's sheet) the picture above the sheet is ~3:4
+  { file: 'keyart-portrait.webp', w: 1080, h: 1440, crop: [0, 1], max: 190 * 1024 },
+] : [
   { file: 'keyart-1280.webp', w: 1280, h: 720, crop: [0, 1], max: 130 * 1024 },
   { file: 'keyart-1920.webp', w: 1920, h: 1080, crop: [0, 1], max: 250 * 1024 },
   { file: 'keyart-2560.webp', w: 2560, h: 1440, crop: [0, 1], max: 500 * 1024 },
-  // 9:16 round Fuji's peak, the torii and the NIPPON sign (the phone card covers the lower half)
-  { file: 'keyart-portrait.webp', w: 900, h: 1600, crop: [0.29, (H * 9) / 16 / W], max: 160 * 1024 },
 ];
 
 /* ---- one browser at a time across agents ---- */
@@ -77,7 +81,7 @@ try {
     await page.goto(`${base}?shots&poster`);
     await page.waitForFunction(() => window.__ready === true, null, { timeout: 600000, polling: 500 });
     const r = await page.evaluate(async ([w, h]) => {
-      const opts = await window.__poster();
+      const opts = await window.__poster({ portrait: w < h });
       return window.__shot('keyart', w, h, { ...opts, png: true, returnData: true, scale: 1 });
     }, [W, H]);
     master = r.data;

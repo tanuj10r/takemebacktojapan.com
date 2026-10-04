@@ -41,14 +41,34 @@ export const POSTER = {
   hachi: { f: 0.45, a: 5.9, pose: 'sit', size: 1.8 },     // (a little larger than life in the picture: Tan)
 };
 
+/* The phone's start card, upright (Tan, 2026-10-04: "the banner doesn't fit on mobile... even Fuji is half hidden"):
+ * the picture there is the screen above the sheet, ~3:4, so its own frame at 3:4, the classic view square on:
+ * NIPPON under Fuji, the torii to the left, Han leaning on the RX-7 on the store's forecourt, Hachi on the zebra at
+ * the foot; the sky above clear for the title. */
+export const POSTER_PORTRAIT = {
+  // (Fuji a little left of the middle and the sky above it bare: the title sits top right; everything kept 10% in from
+  // the sides and the zebra low, as the picture above the sheet runs from ~0.62 (a tall phone) to ~0.9 (Safari's bars))
+  lens: { pos: [-7, 30], yaw: -0.24, vfov: 58, pitch: 0.19, lift: 0 },
+  rail: null,                       // (no railway band: the main road and NIPPON's forecourt lie between the kerb and the store)
+  zebra: { f: 0.48, a: 6.3, w: 4.6 },
+  walkPost: { f: 0.2, a: 10.5 },
+  clearLot: [-30, 18, 30, 40],
+  clearTo: 20,
+  megastore: null,
+  rx7: { f: 0.7, a: 22.8, turn: 1.75 },   // parked on NIPPON's forecourt (Tan: on the footpath, sunk, at 12.5 m)
+  shrine: { f: 0.12, a: 28 },
+  bench: { f: -0.4, a: 9 },
+  sakura: [{ f: -0.1, a: 9, s: 1.0 }],
+  hachi: { f: 0.48, a: 5.4, pose: 'sit', size: 1.8 },
+};
+
 /**
  * Stage the diorama.  Returns the `__shot` options for its lens.
  * @param o.scene, o.world, o.applyLook  the game's own (main.js)
  */
-export function stagePoster({ scene, world, applyLook }) {
-  const S = POSTER, L = S.lens;
+export function stagePoster({ scene, world, applyLook, layout = POSTER, aspect = 16 / 9 }) {
+  const S = layout, L = S.lens;
   const box = new THREE.Box3();
-  const aspect = 16 / 9;
   const tanH = Math.tan((L.vfov * Math.PI) / 360) * aspect;
   const dir = [-Math.sin(L.yaw), -Math.cos(L.yaw)], right = [Math.cos(L.yaw), -Math.sin(L.yaw)];
   const obj = (n) => (typeof n === 'string' ? scene.getObjectByName(n) : n);
@@ -121,7 +141,7 @@ export function stagePoster({ scene, world, applyLook }) {
 
   /* --- the lens's ground: the lot's cars and clutter cleared --- */
   const keep = ['rx7', 'lawson', 'lawson-ground', 'signals', 'megastore', 'shrine'];
-  clear(-5, 14, keep);
+  clear(-5, S.clearTo ?? 14, keep);
   {
     const R = S.clearLot, v = new THREE.Vector3();
     scene.traverse((m) => {
@@ -142,7 +162,7 @@ export function stagePoster({ scene, world, applyLook }) {
    * square across the view, the crossing at (f, a) --- */
   const line = world.line.local;
   line.service.stage('platform-shut');
-  {
+  if (S.rail) {
     const T = obj('town-turned');
     const set = new THREE.Group();
     set.name = 'poster-rail';
@@ -213,7 +233,7 @@ export function stagePoster({ scene, world, applyLook }) {
   world.update = (dt, cam) => { update(dt, cam); if (cam) trees.update(cam); };
 
   /* --- ドンペン堂 (its front faces -x as built), Han and the RX-7 (nose -z), Hachi --- */
-  stage('megastore', S.megastore, -Math.PI / 2);
+  if (S.megastore) stage('megastore', S.megastore, -Math.PI / 2);
   stage('rx7', S.rx7, Math.PI);
   {
     const p = at(S.hachi.f, S.hachi.a);

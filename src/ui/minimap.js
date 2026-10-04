@@ -155,17 +155,21 @@ export function createMinimap(world) {
   function drawFull(pos, yaw, { simple = false, fit = null } = {}) {
     const src = art.canvas;
     const fw0 = fit?.w ?? window.innerWidth * 0.92, fh0 = fit?.h ?? window.innerHeight * 0.92;
-    const scale = Math.min(fw0 / src.width, fh0 / src.height) * dpr;
+    /* (the phone, Tan 2026-10-04: the key and "Tap to close" sat on the sheet over the Deer Park) they go in a strip
+     * under the sheet */
+    const FOOT = simple ? 46 : 0;
+    const scale = Math.min(fw0 / src.width, (fh0 - FOOT) / src.height) * dpr;
     lastScale = scale;
-    const DW = Math.round(src.width * scale), DH = Math.round(src.height * scale);
+    const DW = Math.round(src.width * scale), DH = Math.round(src.height * scale) + Math.round(FOOT * dpr);
     full.width = DW; full.height = DH;
     full.style.width = DW / dpr + 'px'; full.style.height = DH / dpr + 'px';
     const c = full.getContext('2d');
     c.imageSmoothingQuality = 'high';
-    c.drawImage(src, 0, 0, DW, DH);
+    if (FOOT) { c.fillStyle = CREAM; c.fillRect(0, 0, DW, DH); }
+    c.drawImage(src, 0, 0, DW, DH - Math.round(FOOT * dpr));
     const u = simple ? dpr : dpr * Math.max(0.8, Math.min(1.15, DH / dpr / 900));
     c.setTransform(u, 0, 0, u, 0, 0);
-    const W = DW / u, H = DH / u, k = scale / u;
+    const W = DW / u, H = DH / u - FOOT, k = scale / u;      // (H: the sheet's own height, the strip under it apart)
     const P = (x, z) => art.toPx(x, z).map((v) => v * k);
     const font = (px, bold = '') => { c.font = `${bold}${px}px ${JP}`; };
     const text = (t, x, y, col, align = 'left', base = 'middle') => { c.fillStyle = col; c.textAlign = align; c.textBaseline = base; c.fillText(t, x, y); };
@@ -184,8 +188,8 @@ export function createMinimap(world) {
     // the key to the marks sits bottom right, left of "M to close" (a wider foot on the left covered the Deer Park's icon)
     const kw = 72 + c.measureText(M.todo).width + c.measureText(M.hear).width;
     font(11); const cw = c.measureText(M.close).width + 16;
-    const kx = W - 24 - cw - 10 - kw, ky = H - 49;
-    const taken = simple ? [[kx, ky, W - 20, H - 20], [ux - 34, uy - 44, ux + 34, uy + 16]]
+    const kx = simple ? 12 : W - 24 - cw - 10 - kw, ky = simple ? H + 9 : H - 49;
+    const taken = simple ? [[ux - 34, uy - 44, ux + 34, uy + 16]]
       : [[24, 24, 24 + tw, 86], [W - 104, 12, W - 20, 112], [24, H - 58, 24 + fw, H - 24], [kx, ky, W - 20, H - 20], [ux - 34, uy - 44, ux + 34, uy + 16]];
     // (a label never runs off the sheet: Hachi's home sits by its top edge)
     const hits = (b) => b[0] < 16 || b[1] < 16 || b[2] > W - 16 || b[3] > H - 16 || taken.some((t) => b[0] < t[2] && b[2] > t[0] && b[1] < t[3] && b[3] > t[1]);
@@ -271,6 +275,7 @@ export function createMinimap(world) {
 
     // the key to close, bottom right
     font(11);
+    if (simple) { text(M.close, W - 14, H + 23, INK_SOFT, 'right'); return; }
     chip(c, W - 24 - cw, H - 46, cw, 22);
     text(M.close, W - 32, H - 35, INK_SOFT, 'right');
   }

@@ -159,9 +159,9 @@
     :root { --map: 86px; }
     .start { flex-direction: column; }
     .start .bg { position: relative; inset: auto; flex: 1 1 0; min-height: 0; }
-    /* Fuji's peak and Hachi's paws both in the picture: the art is 9:16 and a phone 9:19.5, so the sheet is kept
-     * low (one line of words, the maker's row on one line) and the crop shared between the top and the foot */
-    .start .bg img { object-position: 50% 56%; }
+    /* (Tan, 2026-10-04) the upright art is its own 3:4 frame (scripts/keyart.mjs --portrait), about the shape of the
+     * picture above the sheet: what a squarer screen crops comes off the sky, not Hachi's zebra */
+    .start .bg img { object-position: 46% 86%; }
     .start .bg::after { background: radial-gradient(ellipse 74% 34% at 86% 4%, rgba(251,246,240,.84), rgba(251,246,240,.46) 55%, rgba(251,246,240,0) 82%); }
     .name { right: max(18px, calc(var(--safe-r) + 8px)); top: max(18px, calc(var(--safe-t) + 10px)); }
     .name h1 { font-size: clamp(25px, 7.4vw, 34px); }
@@ -178,7 +178,8 @@
   }
   /* a short phone upright (an SE): there is not room for both, and Hachi is the one to keep */
   @media (orientation: portrait) and (max-height: 740px) {
-    .start .bg img { object-position: 50% 97%; }
+    .start .bg img { object-position: 46% 94%; }
+    .mh-pause .mh-art { object-position: 46% 52%; }
   }
   /* a short screen on its side (Safari's bars showing): the sheet a size down */
   @media (orientation: landscape) { .sheet .mk-who small { display: none; } }
@@ -327,7 +328,7 @@
        wakes the sound (the title song), as on desktop (src/mobile/shell.js) -->
   <div id="boot" class="scrim start" role="dialog" aria-modal="true" aria-labelledby="boot-title">
     <picture class="bg">
-      <source media="(orientation: portrait)" srcset="keyart-portrait.webp" width="900" height="1600" />
+      <source media="(orientation: portrait)" srcset="keyart-portrait.webp" width="1080" height="1440" />
       <img src="keyart-1280.webp" srcset="keyart-1280.webp 1280w, keyart-1920.webp 1920w" sizes="100vw" width="1280" height="720" alt="%S:artAlt%" fetchpriority="high" />
     </picture>
     <header class="name">
