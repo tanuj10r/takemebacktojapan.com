@@ -495,8 +495,12 @@ export function buildDoor(root, { alu, glassMat, colliders, near = 1.8, hold = 2
     /** `p` the player's position (the store's frame is the world's). */
     /** (p) => true keeps the door shut on the player at `p` (the konbini: nothing unpaid goes out). */
     hold: null,
+    /** () => a second person's position, or null (Director Mode, dev: Han walking in): it opens for them too. */
+    also: null,
     update(dt, p) {
-      const dist = api.hold?.(p) ? Infinity : Math.hypot(Math.max(0, Math.abs(p.x - LAWSON.doorX) - lw), p.z);
+      const q = api.also?.();
+      const dist = Math.min(api.hold?.(p) ? Infinity : Math.hypot(Math.max(0, Math.abs(p.x - LAWSON.doorX) - lw), p.z),
+        q ? Math.hypot(Math.max(0, Math.abs(q.x - LAWSON.doorX) - lw), q.z) : Infinity);
       if (dist < near) clear = 0; else clear += dt;
       const want = dist < near || clear < hold ? 1 : 0;
       if (want !== was) { was = want; api.onMove?.(want === 1); }

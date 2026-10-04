@@ -126,6 +126,11 @@ const devParams = new URLSearchParams(location.search);
 const KIT = import.meta.env.DEV && devParams.has('kit');
 const POSTER = import.meta.env.DEV && devParams.has('poster');   // the key art's staged diorama (src/dev/poster.js)
 const FROZEN = import.meta.env.DEV && (devParams.has('shots') || POSTER);
+/* ?director (dev only): Director Mode for the promo videos (src/director/, docs/director-mode-prompt.md).
+ * The flag is up before the world is built (the pup gets a second instance for the double vision). */
+const DIRECTOR = import.meta.env.DEV && devParams.has('director');
+if (DIRECTOR) window.__directorBoot = true;
+let director = null;                                      // (dev: Director Mode's frame, once it has loaded)
 const world = KIT ? buildKitTest(scene) : buildTown(scene, { merge: !POSTER });
 bootStage(STRINGS.boot.ready, '85%');
 await nextPaint();
@@ -592,6 +597,7 @@ const refOverlay = import.meta.env.DEV ? (() => {
 })() : null;
 
 function resize() {
+  if (DIRECTOR && director) return;                       // (Director Mode renders at its own 9:16 size)
   const w = window.innerWidth;
   const h = window.innerHeight;
   camera.aspect = w / h;
@@ -752,6 +758,7 @@ function frame(now = 0) {
   if (contextLost) return;
   requestAnimationFrame(frame);
   if (document.hidden) return;
+  if (DIRECTOR && director?.frame(now)) return;           // Director Mode runs the frame (dev only)
   // Tan's song on the start and pause cards: on whenever the pointer is free (a card is up), off in play
   const menu = !player.locked && !FROZEN;
   if (menu !== menuShown) { menuShown = menu; sound.setMenu(menu); document.body.classList.toggle('game-paused', menu); }
@@ -841,6 +848,22 @@ if (world.reflectRect) {
 }
 enterHero(SPAWN.view);
 frame();
+if (DIRECTOR) {
+  import('./director/index.js').then((m) => {
+    director = m.startDirector({
+      THREE, scene, camera, renderer, pipeline, world, player, sound, hud, shop, sky, canvas, minimap, handsHud, controls,
+      applyLook, get lookName() { return lookName; }, setOutlineResolution, seatLights,
+      soundTick(dt) {
+        const inStore = !!shop?.inside(camera);
+        sound.update(dt, { camera, inside: inStore, look: lookName, cooler: shop?.coolerAt });
+        walkAt.forEach(({ w }, i) => { walkList[i].on = w.walk(); });
+        sound.walkSignals(walkList);
+        if (world.line) { const c = world.line.crossingPos; sound.bells(world.line.service.cross.bells, Math.hypot(camera.position.x - c.x, camera.position.z - c.z)); }
+      },
+      magnifyFuji() { world.fuji.magnify(FUJI_GAMEPLAY); },
+    });
+  });
+}
 // the town is up and its card drawn: the loading card fades off it
 if (boot) {
   boot.classList.add('hidden');

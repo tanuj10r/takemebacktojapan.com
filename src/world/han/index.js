@@ -299,7 +299,7 @@ export function buildHan(ctx) {
   let envK = -1;
   const pl = new THREE.Vector3(), hv = new THREE.Vector3();
   ctx.update((dt, cam) => {
-    if (!cam) return;
+    if (!cam || S.puppet) return;                          // (Director Mode, dev: a shot drives Han and the car)
     const p = ctx.toLocal({ x: cam.x, z: cam.z });
     const dCar = Math.hypot(p.x - cg.position.x, p.z - cg.position.z);
     if (!songAsked && dCar < SOUND.hanSong.preload && soundBus.ready) {
@@ -453,6 +453,10 @@ export function buildHan(ctx) {
       set, play: () => { S.frozen = false; start(); }, stop: () => { S.run = false; S.frozen = false; smoke.reset(); marks.reset(); voice.stop(); },
       state: () => ({ run: S.run, t: S.t, held: S.held, armed: S.armed, x: cg.position.x, z: cg.position.z, psi: -cg.rotation.y, slide: cp.slide, smoke: smoke.count, marks: marks.quads, voice: voice.on }),
       show: (on) => { cg.visible = on; smoke.mesh.userData.on = marks.mesh.userData.on = on; smoke.mesh.visible = marks.mesh.visible = false; },
+      // Director Mode: the parts, to drive by hand (S.puppet = true rests the show)
+      car, han, cg, smoke, S, POSES, blendPose, groundAt, toTown, cp, D, placeCar, ctx,
+      /* (a director's shot feeds its own car's place, heading and slide: the show's tyre trail, as it lays it now) */
+      smokeStep: (dt, psi) => { cp.psi = psi; cp.slide = cp.sliding ? 1 : 0; cp.rev = false; cp.rear = (S.rear ?? 0) + (cp.speed ?? 0) * dt * 1.6; trail(dt, 1); S.rear = cp.rear; },
       stats: () => {
         const h = stats(han.group), all = stats(cg);
         return { car: { tris: all.tris - h.tris, draws: all.draws - h.draws }, han: h, smoke: smoke.count, marks: marks.quads };

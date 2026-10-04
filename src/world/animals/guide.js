@@ -405,7 +405,9 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
   const W = new Walk(ctx, core);
   const geo = shibaGeometry();
   const mat = animalMaterial({ key: 'shibaGuide', rig: RIG, tint: 0x7a6488, bands: 4 });
-  const herd = new Herd(ctx, geo, mat, 1, 'shiba', { extra: 3 });      // (three more pose vectors: the face, reactions.js)
+  // (Director Mode, dev only: a second instance for the drunk double vision)
+  const herd = new Herd(ctx, geo, mat, import.meta.env?.DEV && typeof window !== 'undefined' && window.__directorBoot ? 2 : 1, 'shiba', { extra: 3 });
+  if (herd.n > 1) herd.set(1, 0, 0, 0, 0, 0, 0, 0);   // (the double: hidden until Director Mode shows it)
   herd.mesh.frustumCulled = false;
   const shadow = shadows.slot();
   const turned = ctx.turnedFrame ? Math.PI : 0;
@@ -1974,6 +1976,7 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
   /* ---- what it does ---- */
   function update(dt, cam) {
     if (!W.built) { W.build(); GUIDE.walk = W; const c = W.nearest(HOME.x, HOME.z, 3); if (c >= 0) { const q = W.at(c); G.x = q.x; G.z = q.z; } G.y = ground(G.x, G.z); prefetch(); }
+    if (G.puppet) { G.puppet(dt, cam); return; }            // Director Mode (dev): a shot owns the pup, its brain rests
     G.t += dt;
     // you: where, how fast, which way
     const jumped = !P.first && Math.hypot(cam.x - P.x, cam.z - P.z) > 3;
@@ -2465,6 +2468,19 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
       /** the tour over (everything done, the gate seen): off to the bench for its nap */
       napNow() { refresh(); for (const e of list) G.done.add(e.id); G.gateDone = true; G.act = null; G.leg = TOUR.length; toGateOrNap(); },
       bench: { x: BENCH.x, z: BENCH.z, nap: NAP, seat: GB.seat },
+      /** Director Mode: place instance i (world frame) with all five pose vectors, and its contact shadow (i 0). */
+      put(i, x, y, z, yaw, pitch, roll, a, b, c, d, e, scale = A.size) {
+        const l = ctx.toLocal({ x, z }), yw = yaw + turned;
+        const cy = roll !== 0 && Math.abs(roll) > 0.5 ? BODY_R : 0;
+        const ox = Math.sin(roll) * cy, oy = cy - Math.cos(roll) * cy;
+        herd.set(i, l.x + ox * Math.cos(yw), y + oy, l.z - ox * Math.sin(yw), yw, pitch, roll, scale);
+        herd.setPose(i, ...a); herd.setPose2(i, ...b); herd.setPoseN(0, i, ...c); herd.setPoseN(1, i, ...d); herd.setPoseN(2, i, ...e);
+        herd.flush();
+        if (i === 0) shadows.set(shadow, l.x, ground(x, z), l.z, SHADOW[0] * scale * (1 + 0.4 * Math.max(0, b[0] - 1)), SHADOW[1] * scale, yw);
+      },
+      hide(i) { herd.set(i, 0, -50, 0, 0, 0, 0, 0); herd.flush(); },
+      ground,
+      herd,
       /** the introduction: 0 not yet, 1 running, 2 done (reset() counts it done; introReset() makes it due again) */
       intro: () => G.intro,
       introReset() { G.intro = 0; },

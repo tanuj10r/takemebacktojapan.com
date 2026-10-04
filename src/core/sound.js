@@ -38,6 +38,12 @@ const BED_OF_LOOK = { day: 'birds', blue: 'night-insects' };
 export function createSound({ volume = 0.5, release = 0 } = {}) {
   let ac = null, master, world, sfxBus, outBus, outLow, outGain, inGain, musicGain, reverb, wet;
   let theme = null, menuOn = false;
+  /* four groups for recording passes (Director Mode, dev): ambience, music, effects, the dog's voice; each a gain the
+   * group's sounds go through (1 in play: nothing changes) */
+  const grp = {};
+  const MUSIC = new Set(['han-drift', 'donki-theme', 'rural-flute', 'store-bgm', 'theme']);
+  const AMB = new Set(['station-ambience', 'shrine-chimes', 'wind', 'birds', 'night-insects', 'crows', 'crow-call']);
+  const groupOf = (name = '') => (name.startsWith('dog-') ? 'dog' : MUSIC.has(name) ? 'music' : AMB.has(name) ? 'amb' : 'fx');
   let manifest = {}, muted = volume <= 0.001, lastAudible = volume > 0.001 ? volume : 0.5;
   const buffers = new Map(), loading = new Map();
   const log = [];                    // dev: every sound started, for the audio check
@@ -297,9 +303,9 @@ export function createSound({ volume = 0.5, release = 0 } = {}) {
       p.panningModel = 'HRTF'; p.distanceModel = 'inverse'; p.rolloffFactor = 0;   // the level is ours (falloff)
       p.positionX.value = at.x; p.positionY.value = at.y ?? 1.2; p.positionZ.value = at.z;
       const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = f;
-      g.connect(lp).connect(p); p.connect(bus ?? sfxBus);
+      g.connect(lp).connect(p); p.connect(bus ?? grp[groupOf(file ?? recipe)]?.sfx ?? sfxBus);
       if (v) { v.g = g; v.lp = lp; voices.add(v); }
-    } else g.connect(bus ?? sfxBus);
+    } else g.connect(bus ?? grp[groupOf(file ?? recipe)]?.sfx ?? sfxBus);
     const t = now() + 0.01;
     const b = file && buffers.get(file);
     if (b) {
@@ -428,7 +434,7 @@ export function createSound({ volume = 0.5, release = 0 } = {}) {
     g.gain.linearRampToValueAtTime(lvl, t + 0.06);
     g.gain.setValueAtTime(lvl, t + len - 0.25);
     g.gain.linearRampToValueAtTime(0, t + len);
-    s.connect(g).connect(lp).connect(p).connect(outBus);
+    s.connect(g).connect(lp).connect(p).connect(grp.amb?.out ?? outBus);
     s.start(t, pad + Math.max(0, at), len + 0.05);
     log.push({ name: 'crow-call', t: +now().toFixed(3), k: +lvl.toFixed(3), d: Math.round(d) });
   }
@@ -445,7 +451,7 @@ export function createSound({ volume = 0.5, release = 0 } = {}) {
       z.g = ac.createGain(); z.g.gain.value = 0;
       z.p = ac.createPanner(); z.p.panningModel = 'HRTF'; z.p.rolloffFactor = 0;
       z.p.positionX.value = z.x; z.p.positionY.value = z.y; z.p.positionZ.value = z.z;
-      z.g.connect(z.p).connect(z.indoor ? inGain : outBus);
+      z.g.connect(z.p).connect(z.indoor ? inGain : grp[groupOf(z.name)]?.out ?? outBus);
       z.node = loopNode(z.name, z.g, 1);
     }
     if (!z.node) return;
@@ -538,14 +544,18 @@ export function createSound({ volume = 0.5, release = 0 } = {}) {
       outGain = ac.createGain(); outGain.gain.value = 1;
       outBus.connect(outLow).connect(outGain).connect(world);
       inGain = ac.createGain(); inGain.gain.value = 0; inGain.connect(world);
-      musicGain = ac.createGain(); musicGain.gain.value = 1; musicGain.connect(world);
-      bell.gain = ac.createGain(); bell.gain.gain.value = 0; bell.gain.connect(outBus);
+      musicGain = ac.createGain(); musicGain.gain.value = 1;
+      for (const k of ['amb', 'music', 'fx', 'dog']) { grp[k] = { out: ac.createGain(), sfx: ac.createGain() }; grp[k].out.connect(outBus); grp[k].sfx.connect(sfxBus); }
+      grp.music.world = ac.createGain(); grp.music.world.connect(world);
+      musicGain.connect(grp.music.world);
+      bell.gain = ac.createGain(); bell.gain.gain.value = 0; bell.gain.connect(grp.fx.out);
       hum = makeHum();
       fridge = makeFridge();
       // the loops exist at once (they wait for their files); the list of files comes after
-      for (const [k, lvl] of Object.entries(BEDS)) beds[k] = loopNode(k, outBus, lvl);
+      for (const [k, lvl] of Object.entries(BEDS)) beds[k] = loopNode(k, grp.amb.out, lvl);
       music = streamNode('store-bgm', musicGain, 0.2);
-      theme = streamNode('theme', master, SOUND.menu.level);
+      grp.music.master = ac.createGain(); grp.music.master.connect(master);
+      theme = streamNode('theme', grp.music.master, SOUND.menu.level);
       manifestReady = fetch(import.meta.env.BASE_URL + 'audio/manifest.json').then((r) => r.json()).then((m) => { manifest = m; }, () => { manifest = {}; });
       await manifestReady;
       music.arm();                              // while the click that started us is still in hand
@@ -706,7 +716,7 @@ export function createSound({ volume = 0.5, release = 0 } = {}) {
           n.g = ac.createGain(); n.g.gain.value = 0;
           const p = ac.createPanner(); p.panningModel = 'HRTF'; p.rolloffFactor = 0;
           p.positionX.value = w.x; p.positionY.value = 3; p.positionZ.value = w.z;
-          n.g.connect(p).connect(outBus);
+          n.g.connect(p).connect(grp.fx?.out ?? outBus);
         }
         if (on && !n.src && !n.timer) {
           const file = 'walk-' + (w.sound ?? 'piyo');
@@ -736,7 +746,7 @@ export function createSound({ volume = 0.5, release = 0 } = {}) {
     /** The train's door chime: three notes of our own (never a station melody). */
     chime(distance) {
       if (!ac || muted || distance >= SOUND.doorChime.far) return;
-      const g = ac.createGain(); g.gain.value = 0.6 * falloff(distance, SOUND.doorChime); g.connect(outBus);
+      const g = ac.createGain(); g.gain.value = 0.6 * falloff(distance, SOUND.doorChime); g.connect(grp.fx?.out ?? outBus);
       const t = now() + 0.02;
       [[659.3, 0], [880.0, 0.28], [784.0, 0.56]].forEach(([f, dt]) => tone(g, f, t + dt, 0.45, { level: 0.4 }));
       log.push({ name: 'train-chime', t: +now().toFixed(3) });
@@ -763,6 +773,63 @@ export function createSound({ volume = 0.5, release = 0 } = {}) {
       }
       return { rms: +Math.sqrt(sum / n).toFixed(5), peak: +peak.toFixed(4) };
     }, voiceLevels: () => [...voices].map((v) => ({ indoor: v.indoor, ...voiceLevel(v) })), log, state, get ac() { return ac; }, get manifest() { return manifest; }, buffers };
+  /* Director Mode (dev only; none of this is in the build): the pup's extra voice, clean clips, the offline render of
+   * a recipe, a tap for the recording, the groups on and off (docs/director-mode-prompt.md) */
+  if (import.meta.env.DEV) {
+    Object.assign(RECIPES, {
+      // a squeaky rising yawn, soft paw pats, a tiny yelp, sniffs
+      'dog-yawn'(d, t) {
+        voice(d, t, 0.9, [[0, 620], [0.25, 980], [0.55, 1320], [0.8, 1100], [1, 760]], { level: 0.3, formants: [[1200, 3], [2400, 4]], breath: 0.06, vib: 6 });
+        burst(d, t + 0.05, 0.8, { freq: 900, q: 0.7, level: 0.05, type: 'lowpass' });
+      },
+      'dog-tip'(d, t) { for (let i = 0; i < 2; i++) burst(d, t + i * 0.07, 0.03, { freq: 1600 + i * 300, q: 1.4, level: 0.16 }); },
+      'dog-yelp'(d, t) { voice(d, t, 0.13, [[0, 1500], [0.35, 2350], [1, 1650]], { level: 0.45, formants: [[2100, 3], [3600, 5]], breath: 0.03 }); },
+      'dog-sniff'(d, t) { for (let i = 0; i < 4; i++) burst(d, t + i * 0.1, 0.045, { freq: 3200 + (i % 2) * 500, q: 0.9, level: 0.12 }); },
+    });
+    Object.assign(api, {
+      /** Director Mode (dev): a file played clean (not in the world): straight to the master, with a gain, fades, a
+       * length, looped if asked (between loopStart and loopEnd when given).  { name, gain, dur, loop, loopStart,
+       * loopEnd, fadeIn, fadeOut, offset } */
+      async clip({ name, gain = 1, dur = null, loop = false, loopStart = 0, loopEnd = 0, fadeIn = 0.02, fadeOut = 0.05, offset = 0 }) {
+        if (!ac || !manifest[name]) return;
+        const b = buffers.get(name) ?? (await buffer(name) && buffers.get(name));
+        if (!b) return;
+        const t0 = now() + 0.005, len = dur ?? b.duration;
+        const s = ac.createBufferSource(), g = ac.createGain();
+        s.buffer = b; s.loop = loop; s.loopStart = loopStart; s.loopEnd = loopEnd;
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(gain, t0 + fadeIn);
+        g.gain.setValueAtTime(gain, Math.max(t0 + fadeIn, t0 + len - fadeOut));
+        g.gain.linearRampToValueAtTime(0, t0 + len);
+        s.connect(g).connect(master);
+        s.start(t0, offset);
+        s.stop(t0 + len + 0.05);
+        log.push({ name, t: +now().toFixed(3), clip: true });
+      },
+      /** Director Mode (dev): a recipe (the dog's voice...) rendered into another context (an OfflineAudioContext) at t. */
+      renderRecipe(ctx, dest, name, t, gain = 1) {
+        if (!RECIPES[name]) return false;
+        const keep = ac;
+        ac = ctx;
+        try { const g = ctx.createGain(); g.gain.value = gain; g.connect(dest); RECIPES[name](g, t, {}); } finally { ac = keep; }
+        return true;
+      },
+      /** Director Mode (dev): everything the engine makes, as a MediaStream (it still plays through the speakers). */
+      tap() {
+        if (!ac) return null;
+        if (!api._tap) { api._tap = ac.createMediaStreamDestination(); master.connect(api._tap); }
+        return { ac, node: api._tap, stream: api._tap.stream };
+      },
+      /** Director Mode (dev): a group on or off for a recording pass: 'amb' | 'music' | 'fx' | 'dog'. */
+      setGroup(k, on) {
+        const G = grp[k];
+        if (!G) return;
+        for (const n of Object.values(G)) n.gain.setTargetAtTime(on ? 1 : 0, now(), 0.02);
+        api.groups[k] = on;
+      },
+      groups: { amb: true, music: true, fx: true, dog: true },
+    });
+  }
   return api;
 }
 const _f = new Vector3();

@@ -37,10 +37,16 @@ function ensure() {
   return ac;
 }
 
+let fxOn = 1;
 /** Each frame: where the listener is (world). */
 export function sfxListen(p) {
   listener.x = p.x; listener.z = p.z;
+  if (out && fxOn !== 1) out.gain.setTargetAtTime(0, ac.currentTime, 0.1);
 }
+/** Director Mode (dev): the trains play through the engine's own graph now (soundBus.graph), so its tap has them:
+ * nothing of their own to hand the recording; `sfxOn` still switches them (the effects group). */
+export function sfxTap() { return null; }
+export function sfxOn(on) { fxOn = on ? 1 : 0; if (out && on) out.gain.setTargetAtTime(0.9, ac.currentTime, 0.1); }
 
 /**
  * One set's running sound.  `step(dt, { v, dv, at, phase })`: speed (m/s),
