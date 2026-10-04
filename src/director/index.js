@@ -9,6 +9,8 @@ import { makeVendingMachine } from '../world/vending.js';
 import { makePanel } from './panel.js';
 import { makeRecorder, renderDeterministic } from './record.js';
 import { rng } from './util.js';
+import { drawOverlay } from './overlay.js';
+import { GAME } from '../data/strings.js';
 
 /* ------------------------------------------------------------------ *
  * Director Mode (dev only, ?director): plays every shot of the Hachi promo
@@ -102,6 +104,7 @@ export function startDirector(G) {
   const S = {
     version: 'A', shotIndex: 0, running: null, t: 0, slow: false, hud: false, playAll: false, recording: null,
     held: false, tester: null, lastWall: 0, det: false,
+    at: null,          // where the shot on now starts in its version (s): set by a render or a still, for the words
   };
   const clockDt = (now) => { const d = S.lastWall ? Math.min(0.1, (now - S.lastWall) / 1000) : 0; S.lastWall = now; return d; };
 
@@ -191,6 +194,12 @@ export function startDirector(G) {
     // onto the out canvas (blurred when drunk)
     ctx2.filter = env.blur > 0.02 ? `blur(${(env.blur * 3 * size.w / 1080).toFixed(2)}px)` : 'none';
     ctx2.drawImage(glCanvas, 0, 0, size.w, size.h);
+    ctx2.filter = 'none';
+    // the words (overlay.js): a take's hook, its sounds' names, its end card; `S.words` off for a clean plate
+    if (S.words !== false && shot && S.at !== null) {
+      const V = VERSIONS[S.version], total = V.shots.reduce((a, s) => a + s.dur, 0);
+      drawOverlay(ctx2, size.w, size.h, { hook: V.hook ?? null, cues: V.cues ?? [], t: S.at + shot.t, total, title: GAME.title, url: 'takemebacktojapan.com', endLen: V.endLen ?? 1.8 });
+    }
   }
   /** one step of the world and the shot, `dt` of shot time (the world slowed with it) */
   function step(dt) {
@@ -350,7 +359,7 @@ export function startDirector(G) {
     const take = () => pup.sounds().filter((v) => v.t > 0 && v.t <= list[i].dur).map((v) => ({ ...v, t: v.t + at }));
     try {
       await renderDeterministic({
-        name: S.version === 'C' ? 'hachi-C-4k' : `hachi-${S.version}-det`, w, h, fps: 60, total, canvas: out, sound,
+        name: `hachi-${S.version}-${w}x${h}`, w, h, fps: 60, total, canvas: out, sound,
         version: VERSIONS[S.version],
         // the pup's voice, rendered offline at the times its reactions ask (the same schedule the real-time take plays):
         // each shot's list is taken as it ends (shots add to it as they run), at the shot's place in the version
@@ -359,7 +368,7 @@ export function startDirector(G) {
             // the shot that owns time t, begun fresh when entered; stepped 1/60 s at a time
             let k = 0, a = 0;
             while (k < list.length - 1 && t >= a + list[k].dur) { a += list[k].dur; k++; }
-            if (k !== i) { if (i >= 0) heard.push(...take()); end(); i = k; at = a; begin(list[k]); }
+            if (k !== i) { if (i >= 0) heard.push(...take()); end(); i = k; at = a; S.at = a; begin(list[k]); }
             const want = t - at;
             while (shot.t < want - 1e-6) step(Math.min(1 / 60, want - shot.t));
             render();
@@ -368,6 +377,7 @@ export function startDirector(G) {
       });
     } finally {
       end();
+      S.at = null;
       setSize(OUT.w, OUT.h);
       S.det = false;
       panel.rec(false);
@@ -387,9 +397,14 @@ export function startDirector(G) {
       stop();
       if (size.w !== w || size.h !== h) setSize(w, h);
       const v = Object.values(VERSIONS).find((vv) => vv.shots.some((s) => s.id === id));
-      begin(v.shots.find((s) => s.id === id));
+      const def = v.shots.find((s) => s.id === id);
+      begin(def);
       while (shot.t < t - 1e-6) step(Math.min(1 / 60, t - shot.t));
+      const was = S.version;
+      S.version = Object.keys(VERSIONS).find((n) => VERSIONS[n] === v);
+      S.at = v.shots.slice(0, v.shots.indexOf(def)).reduce((a, s) => a + s.dur, 0);
       render();
+      S.at = null; S.version = was;
       S.held = true;
       return out.toDataURL(type, q);
     },

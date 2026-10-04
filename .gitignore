@@ -19,3 +19,6 @@ screenshots/
 
 # Specialist builders' worktrees (docs/BUILDERS.md)
 .claude/worktrees/
+
+# rendered promo videos (large; made by scripts/_promo-render.mjs)
+docs/promo/out/
