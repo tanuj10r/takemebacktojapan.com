@@ -186,7 +186,7 @@ export function makeHanPuppet(G) {
           H.smokeStep(dt, psiDrift);
         }
         // the drift track with it (the show's song)
-        if (!plan.songOn && τ >= 0) { plan.songOn = true; soundBus.oneShot('han-drift', { gain: 0.5 }); }
+        // (Tan, 2026-10-04: the store's own tunes are in the videos, Han's song is not: the tyres and the engine alone)
       }
       if (dt > 0) smoke.update(dt);
       // ---- Han ----

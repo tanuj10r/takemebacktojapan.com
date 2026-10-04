@@ -20,6 +20,8 @@ const V = (x, y, z) => ({ x, y, z });
 const DOOR = { x: -2.3, z: 0.25 };
 const BENCH = { x: -73, z: -74.8 };
 const KENNEL = { x: 83, z: -89.75 };
+// his garden (config TOWN.hachiHome, world frame: (-x, 27.7 - z)): his cushion, his gate
+const HOME_BED = { x: 75.7, z: -148.9 }, HOME_GATE = { x: 80, z: -144.5 };
 const CROSSING = { x: 80, z: -134.3 };
 const MASCOT = { x: 54.95, z: -41.41 };
 const TORII = { x: -13, z0: -58.6, z1: -65.2 };
@@ -46,17 +48,18 @@ const near = (pup, ahead = 0, y = 0.24) => () => { const s = pup.state; return V
 /* ------------------------------------------ Version A: Hachi's Big Day ------------------------------------------ */
 const A = [
   {
-    id: 'A1', name: 'Wake up at the kennel', dur: 1.5, look: 'day',
+    id: 'A1', name: 'Wake up in his garden', dur: 1.5, look: 'day',
     setup({ pup }) {
-      // curled in the kennel's doorway (its door faces -z)
-      const p = { x: KENNEL.x - 0.15, z: KENNEL.z - 0.9 };
-      pup.reset({ x: p.x, z: p.z, yaw: Math.PI + 0.55, posture: 2 });
+      // (2026-10-04: the kennel by the lane went; he has his own garden across the level crossing, animals/home.js)
+      // curled on his cushion, his kennel behind him; up, a look at you, and off for the gate
+      const p = { x: HOME_BED.x, z: HOME_BED.z };
+      pup.reset({ x: p.x, z: p.z, yaw: -0.9, posture: 2 });
       pup.react('wakeUp', -0.9, { dur: 1.9 });
       pup.pose(0.62, 0, 0.3);                                   // up from the stretch, standing
       pup.look(0.55, 1.05, 'camera');
       pup.react('zoomOff', 1.0, { dur: 0.25 });
-      pup.go(1.2, { x: p.x - 4.5, z: p.z - 1.2 }, 'sprint', { straight: true });
-      return { rig: tripod(V(p.x - 0.45, 0.3, p.z - 1.3), V(p.x + 0.05, 0.2, p.z), { fov: 38, push: 0.08, dur: 1.5 }) };
+      pup.go(1.2, { x: HOME_GATE.x - 0.4, z: HOME_GATE.z - 0.8 }, 'sprint', { straight: true });
+      return { rig: tripod(V(p.x - 1.25, 0.34, p.z + 1.35), V(p.x + 0.25, 0.22, p.z - 0.2), { fov: 40, push: 0.08, dur: 1.5 }), noCollide: true };
     },
   },
   {
@@ -135,13 +138,28 @@ const A = [
     },
   },
   {
-    id: 'A7', name: 'Shake off by the pond', dur: 1.0, look: 'golden',
-    setup({ pup }) {
-      // on the promenade's edge; the camera low over the water, looking back at it (the bench's trees behind)
-      const p = { x: -72, z: -90.4 };
-      pup.reset({ x: p.x, z: p.z, yaw: Math.PI - 0.3 });
-      pup.react('shakeOff', -0.05, { dur: 1.0 });
-      return { rig: tripod(V(p.x + 0.6, 0.42, p.z - 1.55), V(p.x, 0.25, p.z), { fov: 46 }), noCollide: true };
+    id: 'A7', name: 'The moon rabbits pound mochi', dur: 1.5, look: 'golden',
+    setup({ pup, env }) {
+      // (2026-10-04: in for the shake by the pond) ぺったん堂's three at the mortar, on the recording's own beat (4 s in:
+      // a blow at 4.28, a shout at 5.03); Hachi sat where he watches it in the game, nodding to the mallets
+      const M = window.__mochi, w = M.world, dx = w.spot.x - w.usu.x, dz = w.spot.z - w.usu.z, d = Math.hypot(dx, dz) || 1;
+      pup.reset({ x: w.seat.x, z: w.seat.z, yaw: Math.atan2(w.usu.x - w.seat.x, w.usu.z - w.seat.z), posture: 1 });
+      pup.look(0, 1.5, () => V(w.usu.x, 0.75, w.usu.z));
+      pup.react('bob', 0, { dur: 1.5, bpm: 74 });
+      M.stage('show', 4.0);
+      return {
+        // (from his side of the mortar: the order stand is on the other, and stood square in the lens)
+        rig: (() => {
+          const lx = -dz / d, lz = dx / d, side = Math.sign((w.seat.x - w.usu.x) * lx + (w.seat.z - w.usu.z) * lz) || 1;
+          return tripod(V(w.usu.x + dx / d * 2.5 + lx * side * 1.7, 0.6, w.usu.z + dz / d * 2.5 + lz * side * 1.7), V(w.usu.x, 0.8, w.usu.z), { fov: 46, push: 0.06, dur: 1.5 });
+        })(),
+        noCollide: true,
+        update(t, dt, e) {
+          M.stage('show', 4.0 + Math.max(0, t));
+          if (!this.snd && t >= 0) { this.snd = true; e.clip({ name: 'mochi-pound', offset: 4.0, dur: 1.5, gain: 0.85, fadeOut: 0.2 }); }
+        },
+        end() { M.stage(null); this.snd = false; },
+      };
     },
   },
   {
@@ -154,7 +172,8 @@ const A = [
         rig: (t) => {
           const u = ease(Math.min(1, Math.max(0, t / 1.0)));
           const w = u * u;                                          // (the aim leaves him late: he stays above the bottom 20%)
-          return { p: V(-4, lerp(7.5, 1.3, u), lerp(21.5, 17, u)), l: V(lerp(-3.6, -1, w), lerp(-1.5, 2.2, w), lerp(7, -6, w)), fov: 60 };
+          // (2026-10-04: he was a speck before the store: down behind him, a couple of metres off)
+          return { p: V(lerp(-4.6, -4.5, u), lerp(3.0, 0.45, u), lerp(16.5, 12.2, u)), l: V(lerp(-3.9, -2.6, w), lerp(0.1, 1.9, w), lerp(10.5, -6, w)), fov: 56 };
         },
       };
     },
@@ -218,7 +237,7 @@ const A = [
       pup.reset({ x: 3.0, z: 0.74, yaw: Math.atan2(2.9, -6.95), posture: 1 });
       pup.react('faceOnGlass', -0.8, { dur: 3.2, peek: true });
       pup.look(0, 1.5, () => { const c = han.position; return c ? V(c.x, 1.3, c.z) : null; }, 0.8);
-      return { rig: tripod(cam, V(till.x - 0.25, 1.3, till.z), { fov: 45 }) };
+      return { rig: tripod(cam, V(till.x - 0.25, 1.25, till.z), { fov: 30 }) };      // (2026-10-04: a longer lens: Han was a small dark figure)
     },
   },
   {
@@ -421,20 +440,26 @@ const B = [
 /* Each sound starts on its beat: `offset` skips a file's lead-in to its first note (measured: the bells' first strike
  * 0.14 s in, the ka-ching's 0.38 s, the chime's 0.06 s), and the crossing signals loop just their calls (loopStart,
  * loopEnd) so two cycles fit in their 3 s. */
+/* (Tan, 2026-10-04: tightened from 28 s and eight sounds to 20 s and ten beats; the cuckoo, the chick's twin, went;
+ * ぺったん堂's pounding and a petal on his nose came in.  The store's own tunes are in: "music and sound are the
+ * highlight of the launch"; Han's song is in neither video.) */
+const C_LEN = 20;
 const C_CUES = [
-  { t: 0, name: 'wind', gain: 0.22, dur: 28, loop: true, fadeIn: 0.5, fadeOut: 1.0, bed: true },
-  { t: 1.0, name: 'walk-piyo', gain: 0.8, dur: 3.0, loop: true, loopEnd: 1.8, offset: 0.04, fadeOut: 0.3, cap: 'ぴよぴよ · crosswalk chick' },
-  { t: 4.0, name: 'walk-kakko', gain: 0.8, dur: 3.0, loop: true, loopStart: 2.2, loopEnd: 3.95, offset: 3.28, fadeOut: 0.3, cap: 'カッコー · crosswalk cuckoo' },
-  { t: 7.0, name: 'railway-bells', gain: 0.75, dur: 3.5, loop: true, offset: 0.13, fadeOut: 1.2, cap: '踏切 · level crossing' },
-  { t: 10.5, name: 'train-nextstop', gain: 0.9, dur: 3.5, fadeOut: 0.4, cap: '次は渋谷 · next stop, Shibuya' },
-  { t: 14.0, name: 'rural-flute', gain: 0.9, dur: 4.5, offset: 4.0, fadeIn: 0.3, fadeOut: 0.6, cap: 'のんびり · slow life' },
-  { t: 18.5, name: 'donki-theme', gain: 0.75, dur: 3.0, fadeOut: 0.35, cap: 'ドンペン堂 · megastore theme' },
-  { t: 21.5, name: 'ka-ching', gain: 0.95, dur: 2.0, offset: 0.38, cap: 'チャリン · ka-ching' },
-  { t: 23.5, name: 'lawson-chime', gain: 0.8, dur: 4.5, offset: 0.055, fadeOut: 0.6, cap: '入店チャイム · konbini chime' },
+  { t: 0, name: 'wind', gain: 0.22, dur: C_LEN, loop: true, fadeIn: 0.5, fadeOut: 1.0, bed: true },
+  { t: 0.6, name: 'walk-piyo', gain: 0.8, dur: 2.0, loop: true, loopEnd: 1.8, offset: 0.04, fadeOut: 0.25, cap: 'ぴよぴよ · crosswalk chick' },
+  { t: 2.7, name: 'railway-bells', gain: 0.75, dur: 2.3, loop: true, offset: 0.13, fadeOut: 0.8, cap: '踏切 · level crossing' },
+  { t: 5.0, name: 'train-nextstop', gain: 0.9, dur: 2.4, fadeOut: 0.35, cap: '次は渋谷 · next stop, Shibuya' },
+  { t: 7.4, name: 'rural-flute', gain: 0.9, dur: 2.8, offset: 4.0, fadeIn: 0.25, fadeOut: 0.5, cap: 'のんびり · slow life' },
+  // (the recording's second blow, 1.01 s in, then the rabbits' shout at 1.83 and the next blow at 2.67: config MOCHI.cues)
+  { t: 10.2, name: 'mochi-pound', gain: 0.9, dur: 2.5, offset: 0.9, fadeOut: 0.3, cap: 'ぺったん · mochi pounding' },
+  { t: 12.7, name: 'donki-theme', gain: 0.75, dur: 2.3, fadeOut: 0.3, cap: 'ドンペン堂 · megastore theme' },
+  { t: 15.0, name: 'petal', dur: 1.6, cap: '桜 · a petal' },                       // (no file: the wind, and his sneeze)
+  { t: 16.6, name: 'ka-ching', gain: 0.95, dur: 1.3, offset: 0.38, cap: 'チャリン · ka-ching' },
+  { t: 17.9, name: 'lawson-chime', gain: 0.8, dur: 2.1, offset: 0.055, fadeOut: 0.6, cap: '入店チャイム · konbini chime' },
 ];
 const C = [
   {
-    id: 'C1', name: 'Hachi Hears Japan (one take)', dur: 28, look: 'golden', clean: true,
+    id: 'C1', name: 'Hachi Hears Japan (one take)', dur: C_LEN, look: 'golden', clean: true,
     // on the far pavement, facing the konbini across the road: from his eye height the store is low enough there for
     // Fuji to rise over it (on the store's own forecourt its front hides the mountain); no traffic runs the road
     // the camera: 0.9 m, FOV 35, at his eye height (0.40 m, measured: the brief's 0.32 was an estimate, and from there
@@ -444,47 +469,54 @@ const C = [
       const p = this.at;
       const b = this.bearing * Math.PI / 180;                    // (degrees right of -z) Fuji's peak at 9.8: to his right
       const cx = p.x - Math.sin(b) * 0.9, cz = p.z + Math.cos(b) * 0.9;
-      pup.reset({ x: p.x, z: p.z, yaw: Math.atan2(cx - p.x, cz - p.z), posture: 1 });
+      const yaw = Math.atan2(cx - p.x, cz - p.z);
+      pup.reset({ x: p.x, z: p.z, yaw, posture: 1 });
       const src = (side) => () => V(p.x + side * 1.6, 0.8, p.z + 0.6);
-      // 0-1: idle, a blink, a tiny wag; eye contact between sounds
-      pup.look(0, 28, 'camera', 0.8);
-      // 1-4 piyo: ears perk, head toward it, tilt one way and hold; second cycle one ear up
-      pup.look(1.0, 2.6, src(1));
-      pup.react('headTilt', 1.2, { dur: 2.6, side: 1, hold: true, earAt: 0.6 });
-      // 4-7 kakko: the other way, a double tilt, hm?, a tiny sniff toward it
-      pup.look(4.0, 5.6, src(-1));
-      pup.react('headTilt', 4.15, { dur: 2.0, side: -1 });
-      pup.react('sniff', 6.2, { dur: 0.7 });
-      // 7-10.5 the bells: startle, ears back, crouch, tail tucked, trembling, eyes big; relaxes as they fade
-      pup.react('startle', 7.0, { dur: 0.6, seated: true });
-      pup.react('scared', 7.4, { dur: 3.0, seated: true });
-      // 10.5-14 the announcement: confused; one ear up, a slow tilt, looks at you asking; a blink; hm?; a small sneeze
-      pup.look(10.5, 11.3, src(-1));
-      pup.react('headTilt', 10.6, { dur: 2.5, side: -1, hold: true, slow: true, ask: true });
-      pup.react('sneeze', 13.1, { dur: 0.85 });
-      // 14-18.5 the flute: calm, slow blinks, head swaying, a big yawn in the middle
-      pup.react('calm', 14.0, { dur: 4.4 });
-      pup.react('slowBlink', 14.4, { dur: 1.2 });
-      pup.react('yawn', 15.8, { dur: 1.4 });
-      pup.react('slowBlink', 17.2, { dur: 1.2 });
-      // 18.5-21.5 ドンペン堂: eyes open, bobbing to the beat, tippy taps, tongue out
-      pup.react('bob', 18.5, { dur: 3.0, bpm: 83.5 });              // the theme is 167 bpm (measured): a nod every other beat
-      pup.react('tippyTaps', 19.0, { dur: 2.4 });
-      // 21.5-23.5 ka-ching: freeze, ears up, big eyes, straight at you, a paw lifts ("...treat?")
-      pup.react('freeze', 21.5, { dur: 2.0 });
-      // 23.5-27 the chime: joy: the wiggle, giggle and yip, happy squint, tongue out; ends on the happiest face
-      pup.react('happyWiggle', 23.5, { dur: 2.2, seated: true });
-      pup.react('bigSmile', 25.4, { dur: 3.0 });
-      pup.react('slowBlink', 27.0, { dur: 0.95, keep: true });
+      // his nose, sat (the petal's landing), and where it comes down from
+      const nose = V(p.x + Math.sin(yaw) * 0.225, 0.452, p.z + Math.cos(yaw) * 0.225);
+      const petalAt = (t) => { const u = seg(t, 15.0, 15.85), e = u * u * (3 - 2 * u); return V(nose.x + (1 - e) * (0.16 + 0.05 * Math.sin(t * 9)), lerp(0.74, nose.y, u), nose.z + (1 - e) * 0.1); };
+      // 0-0.6: idle, a blink, a tiny wag; eye contact between sounds
+      pup.look(0, C_LEN, 'camera', 0.8);
+      // 0.6-2.7 piyo: ears perk, head toward it, a tilt held, one ear up
+      pup.look(0.6, 2.2, src(1));
+      pup.react('headTilt', 0.8, { dur: 1.8, side: 1, hold: true, earAt: 0.5 });
+      // 2.7-5 the bells: startle, ears back, crouch, tail tucked, trembling, eyes big; relaxes as they fade
+      pup.react('startle', 2.7, { dur: 0.5, seated: true });
+      pup.react('scared', 3.1, { dur: 1.8, seated: true });
+      // 5-7.4 the announcement: confused; one ear up, a slow tilt, looks at you asking
+      pup.look(5.0, 5.7, src(-1));
+      pup.react('headTilt', 5.1, { dur: 2.1, side: -1, hold: true, slow: true, ask: true });
+      // 7.4-10.2 the flute: calm, a slow blink, a big yawn
+      pup.react('calm', 7.4, { dur: 2.7 });
+      pup.react('slowBlink', 7.6, { dur: 0.9 });
+      pup.react('yawn', 8.5, { dur: 1.4 });
+      // 10.2-12.7 the mochi: a nod on each blow, a jump at the rabbits' shout, a nod again
+      pup.react('bob', 10.2, { dur: 0.9, bpm: 74 });
+      pup.react('startle', 11.1, { dur: 0.45, seated: true });
+      pup.react('bob', 11.6, { dur: 1.1, bpm: 74 });
+      // 12.7-15 ドンペン堂: eyes open, bobbing to the beat, tippy taps, tongue out
+      pup.react('bob', 12.7, { dur: 2.3, bpm: 83.5 });              // the theme is 167 bpm (measured): a nod every other beat
+      pup.react('tippyTaps', 13.1, { dur: 1.8 });
+      // 15-16.6 a petal: his eyes on it all the way down onto his nose; a sneeze sends it off
+      // (his eyes on it, his head only a little back: looked straight up at, he showed his chin)
+      pup.look(15.0, 15.95, () => { const q = petalAt(Math.min(15.85, this._t ?? 15)); q.y = Math.min(q.y, nose.y + 0.16); q.x += Math.sin(yaw) * 0.5; q.z += Math.cos(yaw) * 0.5; return q; });
+      pup.react('sneeze', 15.95, { dur: 0.65 });
+      // 16.6-17.9 ka-ching: freeze, ears up, big eyes, straight at you, a paw lifts ("...treat?")
+      pup.react('freeze', 16.6, { dur: 1.3 });
+      // 17.9-20 the chime: joy: the wiggle, the happiest face
+      pup.react('happyWiggle', 17.9, { dur: 1.2, seated: true });
+      pup.react('bigSmile', 18.9, { dur: 1.1 });
       return {
         rig: (t) => {
-          const d = this.dist * (1 - 0.15 * ease(t / 28));          // the slow push-in, 15% closer by the end
+          const d = this.dist * (1 - 0.15 * ease(t / C_LEN));       // the slow push-in, 15% closer by the end
           return { p: V(p.x - Math.sin(b) * d, this.camY, p.z + Math.cos(b) * d), l: V(p.x, this.lookY, p.z), fov: this.fov };
         },
-        update(t, dt, e) {
+        update: (t, dt, e) => {
+          this._t = t;
           for (const c of C_CUES) if (!c._on && t >= c.t) { c._on = true; e.clip(c); }
+          nosePetal(env, t, petalAt, nose);
         },
-        end() { for (const c of C_CUES) c._on = false; },
+        end() { for (const c of C_CUES) c._on = false; if (env.props?.nosePetal) env.props.nosePetal.visible = false; },
       };
     },
   },
@@ -507,6 +539,28 @@ function petal(env, t, pup) {
   const s = pup.state;
   m.position.set(TORII.x + 0.06 * Math.sin(t * 7), lerp(0.75, 0.12, u), TORII.z0 - 1.9 - 0.2 * u);
   m.rotation.set(t * 5, t * 3, t * 4);
+}
+/** The petal that comes down onto the pup's nose (C1): down by 15.85 s, there until the sneeze, then off and away. */
+function nosePetal(env, t, at, nose) {
+  let m = env.props?.nosePetal;
+  if (!m) {
+    const g = new THREE.CircleGeometry(0.022, 10); g.scale(1, 0.72, 1);
+    m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xffd3e0, side: THREE.DoubleSide }));
+    m.userData.noOutline = true;
+    env.G.scene.add(m);
+    (env.props ??= {}).nosePetal = m;
+  }
+  m.visible = t >= 14.9 && t < 16.9;
+  if (!m.visible) return;
+  if (t < 16.05) {
+    const q = at(t), sat = seg(t, 15.8, 15.9);
+    m.position.set(q.x, q.y, q.z);
+    m.rotation.set(lerp(t * 4.2, -Math.PI / 2 + 0.95, sat), lerp(t * 2.6, 0.4, sat), lerp(t * 3.4, 0, sat));
+  } else {
+    const u = (t - 16.05) / 0.85;                                     // sneezed off: out toward the lens and up, then down
+    m.position.set(nose.x + 0.25 * u, nose.y + 0.22 * u - 0.5 * u * u, nose.z + 0.45 * u);
+    m.rotation.set(t * 11, t * 7, t * 9);
+  }
 }
 /** Breath fog on the glass by the pup's nose (A11). */
 function glassFog(env, t, pup) {

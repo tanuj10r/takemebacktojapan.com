@@ -137,6 +137,8 @@ export function startDirector(G) {
     own(true);
     // Version C is clean: the sounds alone (its cues, the pup's voice) over its own quiet bed
     if (def.clean) { for (const g of ['amb', 'fx', 'music']) sound.setGroup(g, false); sfxOn(false); }
+    // (and its own petal: the town's fall, a petal of which can drift past 30 cm from the lens, stays out of it)
+    for (const m of world.petalMeshes ?? []) m.visible = !def.clean;
     env.blur = 0; env.roll = 0;
     han.release();
     pup.show(true); pup.double(null);
@@ -149,7 +151,7 @@ export function startDirector(G) {
   function end() {
     shot?.end?.();
     fill.intensity = 0; rim.intensity = 0;
-    if (shot?.def.clean) { for (const g of ['amb', 'fx', 'music']) sound.setGroup(g, true); sfxOn(true); }
+    if (shot?.def.clean) { for (const g of ['amb', 'fx', 'music']) sound.setGroup(g, true); sfxOn(true); for (const m of world.petalMeshes ?? []) m.visible = true; }
     for (const m of Object.values(env.props ?? {})) m.visible = false;
     Math.random = RANDOM;
     shot = null;
