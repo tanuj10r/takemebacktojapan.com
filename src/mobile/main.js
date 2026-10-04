@@ -12,10 +12,8 @@ import { storePages, pagesRenderer } from '../world/store/pages.js';
 import { tagReflections } from '../world/land/mirror.js';
 import { STRINGS, MOBILE_STRINGS as M } from '../data/strings.js';
 import { PRODUCT } from '../data/catalog.js';
-import { hanShow } from '../world/han/index.js';
 import { GUIDE } from '../world/animals/guide.js';
-import { PETTAN } from '../world/mochi/index.js';
-import { PLAYER_VFOV, HERO_VIEWS, LOOKS, SPAWN, FUJI, LAWSON, HAN_WATCH, ANIMALS, MOBILE } from '../config.js';
+import { PLAYER_VFOV, HERO_VIEWS, LOOKS, SPAWN, FUJI, LAWSON, ANIMALS, MOBILE } from '../config.js';
 import { bootStage, createShell } from './shell.js';
 import { gpuMeter, createDiag } from './diag.js';
 
@@ -185,7 +183,7 @@ if (shadowOnly.length) {
 const TIMES = ['golden', 'night', 'morning'];
 shell = createShell({
   canvas, camera, world, scene,
-  held: () => !!gliding || watch.on,
+  held: () => !!gliding,
   famous: () => !!famousView,
   onTime: () => { if (!fade) setTime(TIMES[(TIMES.indexOf(lastView) + 1) % TIMES.length]); },
   onRestart: () => enterHero(lastView),
@@ -196,7 +194,6 @@ const shop = world.lawson?.shop ?? null;
 if (shop) {
   scene.add(shop.view, shop.fx);
   shop.player = player;
-  PETTAN.attach({ hands: shop.hands });      // ぺったん堂 borrows your hand for its mochi (world/mochi/)
   world.interactables.push(...(world.lawson.interactables ?? []));
   // the Strong Nine: ten seconds a little tipsy
   shop.onTipsy = () => { tipsy = 0; hud.flash(STRINGS.store.tipsy, 3200); };
@@ -421,39 +418,6 @@ function viewSpot(dt) {
   }
 }
 
-/* Han's drive: the view follows the car (desktop's watchCar). */
-const watch = { on: false, mine: false, gone: false, t: new THREE.Vector3(), at: { x: 0, z: 0 } };
-function watchCar(dt) {
-  if (watch.on && Math.hypot(player.pos.x - watch.at.x, player.pos.z - watch.at.z) > 1) watch.gone = true;
-  if (!hanShow.running) watch.gone = false;
-  const on = hanShow.running && !watch.gone && !player.scripted && !player.seat && !famousView && !gliding;
-  if (on && !watch.on) {
-    watch.on = true;
-    watch.mine = !player.suspended;
-    player.suspended = true;
-    player.vel.set(0, 0, 0);
-    watch.at.x = player.pos.x; watch.at.z = player.pos.z;
-  } else if (!on && watch.on) {
-    watch.on = false;
-    if (watch.mine) player.suspended = false;
-    watch.mine = false;
-  }
-  if (!on || dt <= 0) { watch.last = 0; return; }
-  const nowMs = performance.now();
-  const rdt = watch.last ? Math.min(0.25, (nowMs - watch.last) / 1000) : dt;
-  watch.last = nowMs;
-  dt = Math.max(dt, rdt);
-  const W = HAN_WATCH, t = hanShow.target(watch.t), c = camera.position;
-  const dx = t.x - c.x, dz = t.z - c.z;
-  const yaw = Math.atan2(-dx, -dz);
-  const pitch = THREE.MathUtils.clamp(Math.atan2(t.y - c.y, Math.hypot(dx, dz)), W.pitch[0], W.pitch[1]);
-  const k = 1 - Math.exp(-W.follow * dt);
-  const dy = Math.atan2(Math.sin(yaw - player.yaw), Math.cos(yaw - player.yaw));
-  const turnMax = W.maxTurn * (1 + 3 * Math.max(0, Math.abs(dy) - 0.35));
-  player.yaw += THREE.MathUtils.clamp(dy * k, -turnMax * dt, turnMax * dt);
-  player.pitch += THREE.MathUtils.clamp((pitch - player.pitch) * k, -W.maxTurn * 0.6 * dt, W.maxTurn * 0.6 * dt);
-}
-
 /* Hachi's hello: the view eases down to the pup and back (desktop's watchPup).  A drag or a step of your own and
  * the view is yours at once. */
 const pupLook = { on: false, back: false, pitch0: 0, looked: 0, at: { x: 0, z: 0 } };
@@ -588,10 +552,8 @@ function frame(now = 0) {
   const dt = menu ? 0 : tick;
   if (!menu) adapt(raw);
 
-  watchCar(dt);
   watchPup(dt);
   if (!player.scripted) player.update(dt);
-  if (watch.on) { player.pos.x = watch.at.x; player.pos.z = watch.at.z; player.applyCamera(0); }
   viewSpot(dt);
   tipsyStep(dt);
   timeFade(dt);
@@ -679,7 +641,7 @@ frame();
 if (import.meta.env?.DEV || params.has('stats')) {
   window.__m = {
     scene, camera, renderer, pipeline, world, player, sound, hud, shell, THREE, marks, perf, applyLook, enterHero, setTime,
-    hanShow, GUIDE, diag, meter, get scale() { return renderScale; }, touch: shell.touch,
+    GUIDE, diag, meter, get scale() { return renderScale; }, touch: shell.touch,
     lite, culler, mirrors, tier, get released() { return released?.out; }, storePages, census: () => census(scene, renderer),
     /** dev (scripts/_mini.mjs): stand at a spot and draw it: { x, z, yaw, pitch, look, lift, train, trainX } */
     goto(o = {}) {

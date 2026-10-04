@@ -391,7 +391,10 @@ export function buildHachiHome(town) {
 
   /* ---- the play tunnel: hoops of cloth, blue and yellow, open at both ends (he runs through; you don't) ---- */
   {
-    const T = H.tunnel, len = T.z1 - T.z0, R = 0.36, RINGS = 8;
+    /* (Tan, 2026-10-04: "Hachi runs through the tunnel, not inside it") at 0.36 its arch stood 0.34 m over his
+     * flanks and he is 0.37 m to his ear tips: his back and ears went through the cloth all the way.  0.48: 0.45
+     * inside over his flanks, room for his bound */
+    const T = H.tunnel, len = T.z1 - T.z0, R = 0.48, RINGS = 8;
     for (let i = 0; i < RINGS; i++) {
       const z = T.z0 + ((i + 0.5) * len) / RINGS, col = i % 2 ? 0xf2c53d : 0x4a86c8;
       const shell = new THREE.CylinderGeometry(R, R, len / RINGS, 14, 1, true, -Math.PI / 2, Math.PI);

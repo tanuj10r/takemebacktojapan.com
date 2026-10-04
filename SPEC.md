@@ -29,8 +29,9 @@ It lives at **takemebacktojapan.com**.
 
 - A static website, playable from a shared link in desktop browsers
   (Chrome, Edge, Firefox, Safari on macOS). The desktop game is live and
-  nothing in it is compromised for phones: a phone gets a friendly card
-  today, and a mobile version is in progress as its own build.
+  nothing in it is compromised for phones: phones get their own build, the
+  pocket town (m.html, src/mobile/; docs/decisions/mobile-lite.md), portrait
+  and smaller, with the full experience left to desktop.
 - Ready in about 4 s on desktop broadband; smooth on a normal laptop, 60 fps
   at 1440p on a mid-range GPU.
 - Everything is built in code: no downloaded models or images. Every sign
@@ -561,7 +562,7 @@ Tan's call. **Open**: not built yet, and still wanted or undecided.
 | Boarding the train, the station master, the shrine prayer, confetti | Built, then dropped (Tan) |
 | People (students, shoppers) | Dropped: only the hand and Han |
 | Birds on wires, cat, sparrows | Changed: cat, pigeons, koi, turtles, ducks, heron, egrets, butterflies, crows, Hachi |
-| Friendly "best on desktop" screen for phones | Done (the phone card); a mobile version is in progress |
+| Friendly "best on desktop" screen for phones | Done (the phone card), then the pocket town (m.html, 2026-10-04) |
 | Title screen, credits in the game | Done: the start card, and credits.html linked from it |
 | M7 memory under 300 MB | About there (270-310 MB after start) |
 | M7 download under 5 MB | Changed: 5.25 MB (Tan); 5.05 MB today |
@@ -592,8 +593,9 @@ drift, the station plaza's bus stop, and share images from the key art.
 **Analytics:** DataFast (datafa.st), on the live site only (desktop and phone): page
 views and named goals (the postcard, the selfie, the chip's links), never a
 photo. It is the one script from another domain (AGENTS.md).
-**In progress:** a mobile version, as its own build; until it ships a phone
-sees the card.
+**Phones:** the pocket town (m.html, live 2026-10-04): the main road, the
+shopping lane to the station, the shrine, the bench and the Deer Park gate;
+no Han, ぺったん堂 or Hachi's home. DECISIONS.md "The pocket town" onwards.
 
 **A. Before it went live (the launch list)**
 
@@ -666,7 +668,8 @@ sees the card.
   - Weigh the Pokémon page at 3072.
 - **Code-split the main chunk,** e.g. the map, Han, the trains.
 - **Headroom under 5.25 MB** before adding anything (0.2 MB today).
-- **The mobile version** (in progress).
+- **The pocket town** (phones): the label page and the store's signs held a
+  size smaller; a phone start for the guide check's voice line.
 
 **C. Later (new content; each a milestone with a plan and Tan's OK)**
 

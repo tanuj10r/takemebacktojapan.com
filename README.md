@@ -26,8 +26,9 @@ npm run dev
 npm run size    # what a first visit downloads (budget 5.25 MB; 5.05 MB today)
 ```
 
-Desktop browsers. A phone gets a card for now; a mobile version is in
-progress.
+Desktop browsers get the whole town. Phones get the pocket town (m.html, its
+own build): portrait, a smaller town from the same generator, two-thumb
+controls and Walk with Hachi, with the full experience left to desktop.
 
 ## Controls
 The keys that do something where you are standing are always listed in the

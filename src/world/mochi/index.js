@@ -691,9 +691,18 @@ export function buildMochi(ctx, net, kit, lot) {
   }
 
   /* ================================ each frame ================================ */
+  const LOW = { v: 9 };                 // dev: the held mallets' lowest edge over the stage floor (m)
   function place() {
     for (let i = 0; i < 3; i++) {
       const o = P[i];
+      /* (Tan, 2026-10-04: "the pounding mallets go into the floor") held, its head never under the stage: let down
+       * aside its face sat 15 cm under a pounder's feet, and in a bow 44 cm; the swing is held back so the head's
+       * lowest edge stays a hair over the stage floor (rabbits.js malletFace: the face's middle, the head 6 cm round) */
+      if (o.role < 1) {
+        const lo = (Y0 - o.y) / SCALE + 0.075;
+        if (malletFace(o.swing, o.lean)[0] < lo) o.swing = Math.min(o.swing, swingFor(lo, o.lean));
+        if (import.meta.env?.DEV) LOW.v = Math.min(LOW.v, (malletFace(o.swing, o.lean)[0] - 0.06) * SCALE + o.y - Y0);   // (scripts/_mochi.mjs)
+      }
       herd.set(i, o.x, o.y, o.z, o.yaw, 0, 0, SCALE);
       herd.setPose(i, o.swing, o.lean, o.sq, o.flop);
       herd.setPose2(i, o.role, o.reach, o.nod, o.look);
@@ -808,7 +817,7 @@ export function buildMochi(ctx, net, kit, lot) {
 
   if (import.meta.env?.DEV && typeof window !== 'undefined') {
     window.__mochi = {
-      S, P, HOME, shop, herd, spot, HIT, cues: C, CARD,
+      S, P, HOME, shop, herd, spot, HIT, cues: C, CARD, low: LOW,
       len: { enter: ENTER_LEN, bye: BYE_LEN, down: T_DOWN, set: SERVE_SET, all: T_ALL },
       /** Stand the rabbits at `t` s of a phase (null: let it run); no sound.  `o`: { feed: true } stages the treat for a Hachi on his seat. */
       stage(phase, t = 0, o = {}) {

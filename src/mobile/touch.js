@@ -18,7 +18,6 @@ import { TUNE, lookGain } from './controls/tune.js';
  *          from the finger's own timestamps and every coalesced sample, so
  *          a 60 Hz and a 120 Hz screen turn the same.  A flick's lift
  *          glides on a moment (player.flick).
- *   tap    a quick, still touch on the view: onTap(x, y).
  *   hints  "Walk" under the stick and "Drag to look" on the right, until
  *          each has been done once.
  *
@@ -35,7 +34,7 @@ const CHEVRON = '<svg viewBox="0 0 132 132" aria-hidden="true"><g fill="none" st
 const SWIPE = '<svg viewBox="0 0 48 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
   + '<path d="M9 12h30M14 7l-5 5 5 5M34 7l5 5-5 5"/></g><circle cx="24" cy="12" r="4.2" fill="currentColor"/></svg>';
 
-export function createTouch(player, { surface = document.body, isPlaying = () => true, onTap = null, onDrag = null, onHold = null, onStick = null, parent = document.body } = {}) {
+export function createTouch(player, { surface = document.body, isPlaying = () => true, onDrag = null, onStick = null, parent = document.body } = {}) {
   const S = TUNE.stick, L = TUNE.look, TAP = TUNE.tap;
   const R = S.radius, B = S.base, K = S.knob;
   const style = document.createElement('style');
@@ -81,12 +80,11 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
   parent.append(base, knob, hint);
 
   let stickId = null, cx = 0, cy = 0, shown = false, lookedPx = 0;
-  let holdTimer = 0, holding = null;
   const looks = new Map();          // pointerId -> { x, y, t, v, n, x0, y0, t0, moved, trail }
   const vw = () => window.innerWidth, vh = () => window.innerHeight;
   // where the stick rests when no thumb is on it: bottom left, inside the safe area
   let insets = null;               // the safe area, measured once per screen size
-  // (read each time: the portrait panel switches schemes, and with them the stick's side and rest, panel.js)
+  // (read each time: the portrait panel sets the stick's side and rest as it lays itself out, panel.js)
   const rest = () => { const right = S.side === 'right'; insets ??= { l: safe('l'), r: safe('r'), b: safe('b') }; return [right ? vw() - S.rest[0] - insets.r : S.rest[0] + (S.restAbs ? 0 : insets.l), vh() - S.rest[1] - (S.restAbs ? 0 : insets.b)]; };
   const place = (el, x, y) => { el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`; };
   const home = () => { const [x, y] = rest(); cx = x; cy = y; place(base, x, y); place(knob, x, y); };
@@ -140,8 +138,6 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
     } else if (onPicture) {
       const t = e.timeStamp || performance.now();
       looks.set(e.pointerId, { x: e.clientX, y: e.clientY, t, v: 0, n: 0, x0: e.clientX, y0: e.clientY, t0: t, moved: 0, trail: [] });
-      // the hold scheme (panel.js): a finger kept on the picture a moment walks you on while it stays (it still looks)
-      if (onHold && looks.size === 1) { const id = e.pointerId; holdTimer = setTimeout(() => { if (looks.has(id) && isPlaying()) { holding = id; onHold(true); } }, 180); }
       player._glide.yaw = player._glide.pitch = 0;            // a new touch stops a glide
     }
     try { surface.setPointerCapture?.(e.pointerId); } catch { /* fine */ }
@@ -190,12 +186,7 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
     const l = looks.get(e.pointerId);
     if (!l) return;
     looks.delete(e.pointerId);
-    clearTimeout(holdTimer);
-    if (holding === e.pointerId) { holding = null; onHold?.(false); return; }
     const now = e.timeStamp || performance.now();
-    // a tap: quick and still, on the view
-    if (e.type === 'pointerup' && onTap && isPlaying() && now - l.t0 < TAP.ms
-      && Math.hypot(e.clientX - l.x0, e.clientY - l.y0) < TAP.px && l.moved < TAP.px * 2) { onTap(e.clientX, e.clientY); return; }
     // a flick: the finger was still moving as it lifted; the view glides on a moment
     if (e.type !== 'pointerup' || looks.size || now - l.t > 45) return;
     let sx = 0, sy = 0, t0 = now;
@@ -222,7 +213,6 @@ export function createTouch(player, { surface = document.body, isPlaying = () =>
     /** Playing or not: the stick shows only in play; a pause lets go of everything. */
     setPlaying(on) {
       if (!on) {
-        clearTimeout(holdTimer); if (holding !== null) { holding = null; onHold?.(false); }
         stickId = null; looks.clear();
         player.stick.x = player.stick.y = 0; player.stick.held = false;
         for (const el of [base, knob]) { el.style.transition = ''; el.classList.remove('on'); }

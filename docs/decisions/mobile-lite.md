@@ -770,3 +770,9 @@ upload (2.2 s); 3 s needs the town built in two parts (the famous view first, th
   the tap.
 - To see on desktop one day: ドンペン堂's south side wall is a dark panel there and a pale one on the phone (as it
   was before this pass), and the two seams above.
+
+## After this: the pocket town (2026-10-03 to 04)
+The phone became its own smaller town in portrait (src/mobile/plan.js, pocket-lots.js; `@mini` marks), with a
+two-thumb panel, Walk with Hachi, its own key art, freed canvases and decoded sounds, and no Han, ぺったん堂 or
+Hachi's home. The record is in DECISIONS.md, from "The pocket town, portrait, smaller still". The phone's check is
+scripts/_mini-flow.mjs (portrait); scripts/_mobile-ui.mjs (the landscape layout) was retired.

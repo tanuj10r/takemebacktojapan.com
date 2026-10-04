@@ -120,6 +120,7 @@ try {
    * held for it and set free; the shop is quiet again and the ring comes back */
   await step('order', async () => {
     const { player, hud, sound, world, camera } = window.__scene, M = window.__mochi, G = window.__guide.G, w = M.world;
+    M.low.v = 9;          // (the held mallets' lowest edge over the stage floor, through the show: Tan, 2026-10-04, 'into the floor')
     const item = world.interactables.find((i) => /Order a mochi/.test(i.label));
     Object.assign(G, { x: w.spot.x - 2.2, z: w.spot.z + 0.6, state: 'wait', act: null, since: 0, waitT: 0 });
     const log0 = sound.debug.log.length, toasts = [];
@@ -183,13 +184,13 @@ try {
       src: entry?.src, showFrames: n, worstFrameMs: +frame.toFixed(1), clockOffMs: +(drift * 1000).toFixed(2), cues: fired.length, hits: fired.filter((f) => f.kind === 'hit').length,
       lateMsMax: Math.max(...late), lateMsMean: +(late.reduce((a, b) => a + b, 0) / Math.max(1, late.length)).toFixed(1),
       handDown: (await window.wait(700), window.__store.shop.hands.up < 0.05), endPhase: M.S.phase, ringBack: (await window.wait(4600), item.hitbox.visible),
-      ...shots,
+      malletLow: +M.low.v.toFixed(3), ...shots,
     };
     return res;
   }, (r) => r.phases === 'pay enter show after bye quiet' && r.suspended && r.card && r.cardInView && r.alert && r.entered === 3 && !r.labelAtPay && r.poundsBeforeShow === 0 && r.pounds === 1 && r.kachingBeforeShow
     && r.labelInShow && (r.src === 'file' || r.src === 'file-late') && r.cues === 31 && r.hits === 8 && r.clockOffMs < r.worstFrameMs + 5 && r.lateMsMax < r.worstFrameMs + 25
     && r.hachiSat && r.nods >= 2 && r.treat && r.hachiInView && r.sneeze && r.served && r.onPlate && r.held && r.bites === 3
-    && r.toasts.length === 2 && r.toasts.every(english) && r.toasts[0] === 'Paid  ¥200' && r.free && r.handDown && r.endPhase === 'quiet' && r.ringBack);
+    && r.toasts.length === 2 && r.toasts.every(english) && r.toasts[0] === 'Paid  ¥200' && r.free && r.handDown && r.endPhase === 'quiet' && r.ringBack && r.malletLow > -0.005);
 
   /* the cue table against the encoded file: each strike's thud in the decoded audio */
   await step('cues-vs-file', async () => {

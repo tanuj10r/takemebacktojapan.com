@@ -1,5 +1,12 @@
 # The experiences build (2026-09-28, launch the next day)
 
+**On phones (the pocket town, m.html, 2026-10-04).** To do: the famous view,
+the konbini, the train's listening spot, the slow-life bench, the shrine's
+fox (Hachi's visit). To hear: the walk signals, ドンペン堂, the station, the
+level crossing (from the plaza; no detour), the shrine's chimes. Not on the
+phone: Han's RX-7, ぺったん堂, Hachi's home. Hachi's tour ends at the Deer
+Park gate, then the postcard (src/mobile/plan.js; DECISIONS.md).
+
 The town is Fujikawaguchikko (富士川口湖町), its station 富士川口湖駅
 (docs/decisions/rename-and-sound.md).
 

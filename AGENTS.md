@@ -18,8 +18,8 @@ teasers. Full design: SPEC.md; read only the sections the work needs.
   our layout with our own signs.
 
 ## Hard rules
-- Desktop only. No touch or mobile fallbacks. Never lower visual quality
-  for weak devices.
+- Desktop is the full game; never lower its quality for weak devices. Phones
+  get m.html, the portrait pocket town (src/mobile/, `@mini` marks).
 - Visuals are built in code: no downloaded models or images. Signage is
   drawn with Canvas2D.
 - Sound files live in assets/audio/ (SPEC section 9 audio list). Never
