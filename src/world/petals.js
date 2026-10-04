@@ -27,6 +27,13 @@ const HALF_DEFAULT = 9.5;
  *                     and petals wrap round it (here: the player), on
  *                     flat ground at y = 0
  * @param opts.trackZ  z of the railway, for the lift a passing train gives
+ * @param opts.land    a following field's petals land on what is under them (Tan, 2026-10-04: "the blossoms
+ *                     always go behind objects rather than falling on them"): they fell to y 0 through
+ *                     everything, so one over a car, a bench or the pavement went into it and out of sight.
+ *                     Now each comes to rest on the highest thing under it (ctx's colliders and platforms: a
+ *                     roof's edge, a bonnet, a slat, a kerb), slides down the face of what stands taller than
+ *                     it is instead of going through, lies flat a few seconds (a gust slides it), and shrinks
+ *                     away before it falls again from a tree.
  */
 export function buildPetals(ctx, opts = {}) {
   const COUNT = opts.count ?? COUNT_DEFAULT;
@@ -84,6 +91,50 @@ export function buildPetals(ctx, opts = {}) {
   const scaleV = new THREE.Vector3();
   let t = 0;
 
+  /* ---- what a petal can land on, or run into: the town's solid boxes and raised surfaces, by 4 m cells (made at
+   * the first frame: the town is built by then) ---- */
+  const LAND = !!opts.land && !!follow;
+  const CELL = 4, REST = [1.6, 3.6], GONE = 0.7;
+  let grid = null;
+  const makeGrid = () => {
+    grid = new Map();
+    const put = (b, top, bottom) => {
+      if (!(b.x1 > b.x0) || !(b.z1 > b.z0)) return;
+      const e = { x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, top, bottom };
+      for (let ix = Math.floor(b.x0 / CELL); ix <= Math.floor(b.x1 / CELL); ix++) for (let iz = Math.floor(b.z0 / CELL); iz <= Math.floor(b.z1 / CELL); iz++) {
+        const k = ix * 8192 + iz;
+        let l = grid.get(k);
+        if (!l) grid.set(k, (l = []));
+        l.push(e);
+      }
+    };
+    for (const c of ctx.colliders ?? []) put(c, c.top ?? Infinity, c.bottom ?? -Infinity);
+    for (const p of ctx.platforms ?? []) put(p, p.top, -Infinity);
+  };
+  /** Under (x, z) for a petal at height y: `land` the highest top it is over, `wall` if it is inside something taller. */
+  const probe = { land: 0, wall: false };
+  const look = (x, z, y) => {
+    probe.land = 0; probe.wall = false;
+    const l = grid.get(Math.floor(x / CELL) * 8192 + Math.floor(z / CELL));
+    if (!l) return probe;
+    for (let i = 0; i < l.length; i++) {
+      const e = l[i];
+      if (x < e.x0 || x > e.x1 || z < e.z0 || z > e.z1 || y < e.bottom) continue;
+      if (e.top <= y + 0.08) { if (e.top > probe.land) probe.land = e.top; } else probe.wall = true;
+    }
+    return probe;
+  };
+  const flatQ = new THREE.Quaternion(), yawQ = new THREE.Quaternion(), X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
+  const lay = (p, y) => {
+    p.rest = REST[0] + (REST[1] - REST[0]) * ((p.phase * 0.37) % 1);
+    p.restY = y;
+    p.y = y + 0.014;
+    // flat on it, face up, turned as it fell, a hair of tilt
+    flatQ.setFromAxisAngle(X, -Math.PI / 2 + ((p.phase % 1) - 0.5) * 0.2);
+    yawQ.setFromAxisAngle(Z, p.angle);
+    p.restQ = (p.restQ ?? new THREE.Quaternion()).copy(flatQ).multiply(yawQ);
+  };
+
   let cxF = 0, czF = 0;
   /* `emitters` ([{ x, y, z, r }], M2d): canopies the fall comes from.  A
    * petal that lands mostly re-spawns inside a tree near the player, so the
@@ -110,6 +161,11 @@ export function buildPetals(ctx, opts = {}) {
       p.y = TOP + rng.range(0, 1.4);
     }
     p.phase = rng.range(0, 10);
+    p.rest = 0;
+    // (never born inside a building: a canopy's edge over a roof, a wrap of the field)
+    // (in a street most of the field's box is houses: a dozen tries finds the open air; else it waits out of sight)
+    if (grid && p.y > 0 && look(p.x, p.z, p.y).wall) { if ((p.tries = (p.tries ?? 0) + 1) < 12) { respawn(p); return; } p.y = -5; }
+    p.tries = 0;
   }
 
   function update(dt, gust, gustDir) {
@@ -121,8 +177,27 @@ export function buildPetals(ctx, opts = {}) {
     }
     const wind = gust * 5.4 * gustDir;
     const lift = gust * 1.5;
+    if (LAND && !grid && (ctx.colliders?.length ?? 0) > 0) makeGrid();
     for (let i = 0; i < P.length; i++) {
       const p = P[i];
+      if (p.rest > 0) {
+        // landed: it lies there, slid a little by a gust (off its edge and it falls on), then shrinks away
+        p.rest -= dt;
+        if (gust > 0.25) {
+          p.x += wind * 0.06 * dt; p.z += wind * 0.012 * dt;
+          const s = look(p.x, p.z, p.y + 0.1);
+          if (s.wall || Math.abs(s.land - p.restY) > 0.03) { p.rest = 0; continue; }
+        }
+        if (p.rest <= 0 || Math.abs(p.x - cxF) > HALF || Math.abs(p.z - czF) > HALF) { respawn(p); continue; }
+        dummy.position.set(p.x, p.y, p.z);
+        dummy.quaternion.copy(p.restQ);
+        scaleV.setScalar(p.scale * Math.min(1, p.rest / GONE));
+        dummy.scale.copy(scaleV);
+        dummy.updateMatrix();
+        p.mesh.setMatrixAt(p.idx, dummy.matrix);
+        continue;
+      }
+      const px = p.x, pz = p.z;
       // large slow wave + small fast flutter: reads as air, not noise
       const s = Math.sin(t * p.swayFreq + p.phase);
       const s2 = Math.sin(t * p.swayFreq * 2.7 + p.phase * 1.7);
@@ -132,15 +207,28 @@ export function buildPetals(ctx, opts = {}) {
       p.y += lift * Math.max(0, 1 - Math.abs(p.z - trackZ) / 8) * dt;
       p.angle += p.spinRate * dt * (1 + gust);
 
+      // against what stands taller than it is: down its face, not through it
+      let landY = 0;
+      if (grid) {
+        let s = look(p.x, p.z, p.y);
+        if (s.wall) { p.x = px; p.z = pz; s = look(px, pz, p.y); if (s.wall) { respawn(p); continue; } }
+        landY = s.land;
+      }
       const cx = follow ? cxF : centerX(p.z);
       // a petal from a tree never wraps round the box: it falls again from a tree
       if (onlyTrees && (Math.abs(p.x - cx) > HALF || p.z < czF + Z0 || p.z > czF + Z1)) respawn(p);
       // `while`, so a teleport (the famous-view keys) re-centres at once
+      const ux = p.x, uz = p.z;
       while (p.x < cx - HALF) p.x += 2 * HALF;
       while (p.x > cx + HALF) p.x -= 2 * HALF;
       while (p.z < czF + Z0) p.z += Z1 - Z0;
       while (p.z > czF + Z1) p.z -= Z1 - Z0;
-      if (p.y < (follow ? 0 : groundY(p.z)) + 0.04) respawn(p);   // a waiting petal (y -5) retries every frame
+      if (grid && p.y > -1) {
+        // (a wrap of the field may have set it down in something: it falls again from a tree)
+        if (p.x !== ux || p.z !== uz) { const s = look(p.x, p.z, p.y); if (s.wall) { respawn(p); continue; } landY = s.land; }
+        if (exclude.length && indoors(p)) { respawn(p); continue; }
+        if (p.y < landY + 0.03) { lay(p, landY); p.y = landY + 0.014; }
+      } else if (p.y < (follow ? 0 : groundY(p.z)) + 0.04) respawn(p);   // a waiting petal (y -5) retries every frame
       else if (exclude.length && indoors(p)) respawn(p);
 
       q.setFromAxisAngle(p.spin, p.angle);
@@ -160,6 +248,17 @@ export function buildPetals(ctx, opts = {}) {
   for (let i = 0; i < 40; i++) update(0.1, 0, 1);
 
   if (!follow) buildFallenPetals(ctx, tex);
+  // dev (scripts/_petals.mjs): how many lie where, and whether any is inside something solid
+  if (import.meta.env?.DEV && typeof window !== 'undefined') (window.__petals ??= []).push(() => {
+    let rest = 0, high = 0, inside = 0, air = 0, top = 0;
+    for (const p of P) {
+      if (p.y < -1) continue;
+      if (p.rest > 0) { rest++; if (p.restY > 0.3) high++; top = Math.max(top, p.restY); }
+      else { air++; if (grid && look(p.x, p.z, p.y).wall) inside++; }
+    }
+    let my = 0, mn = 9, k = 0; for (const p of P) if (p.y > -1 && !(p.rest > 0)) { my += p.y; mn = Math.min(mn, p.y); k++; }
+    return { n: P.length, air, rest, high, inside, top: +top.toFixed(2), grid: grid ? grid.size : 0, meanY: +(my / Math.max(1, k)).toFixed(2), minY: +mn.toFixed(2), c: [+cxF.toFixed(0), +czF.toFixed(0)], t: +t.toFixed(1) };
+  });
   return { update, meshes };
 }
 

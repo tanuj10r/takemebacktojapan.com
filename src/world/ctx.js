@@ -60,6 +60,7 @@ export function makeCtx(scene, root) {
       scene,
       root: group,
       colliders,
+      platforms,
       interactables,
       add: (obj) => { group.add(obj); return obj; },
       collide: (x0, z0, x1, z1, top, bottom) => {

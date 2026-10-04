@@ -265,14 +265,14 @@ export function buildTown(scene, { cell = 128, bulkCell = 128, detailCell = 0, s
   // no petals fall inside the store (M3d): its footprint under the roof
   const indoors = [{ x0: -LAWSON.width / 2 - 0.1, x1: LAWSON.width / 2 + LAWSON.wingWidth, z0: -LAWSON.depth - 0.1, z1: 0.05, top: LAWSON.height }];
   const petals = buildPetals(ctx, {
-    count: TOWN.petals.air, half: 24, trackZ: T.toWorld({ x: 0, z: TOWN.rail.z }).z, follow: () => camPos, exclude: indoors,
+    count: TOWN.petals.air, half: 24, trackZ: T.toWorld({ x: 0, z: TOWN.rail.z }).z, follow: () => camPos, exclude: indoors, land: true,
   });
   // and the fall from the town's sakura (M2d), a separate field so the famous
   // views keep M2's petals exactly
   const railZ = T.toWorld({ x: 0, z: TOWN.rail.z }).z;
   const fall = buildPetals(ctx, {
     count: TOWN.petals.trees, half: 24, trackZ: railZ, follow: () => camPos,
-    emitters: [...(core.sakura?.emitters ?? []).map((e) => T.toWorld(e)), ...(frameSakura?.emitters ?? [])], onlyTrees: true, seed: 8211, exclude: indoors,
+    emitters: [...(core.sakura?.emitters ?? []).map((e) => T.toWorld(e)), ...(frameSakura?.emitters ?? [])], onlyTrees: true, seed: 8211, exclude: indoors, land: true,
   });
   for (const m of fall.meshes) m.userData.dynamic = true;
   for (const m of petals.meshes) m.userData.dynamic = true;
