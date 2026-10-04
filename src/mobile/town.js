@@ -15,6 +15,7 @@ import { buildTownSakura } from '../world/kit/sakura.js';
 import { buildLand } from '../world/land/index.js';
 import { makeExperiences } from '../world/experiences.js';
 import { buildAnimals } from '../world/animals/index.js';
+import { GUIDE } from '../world/animals/guide.js';
 import { makeNight } from '../world/kit/night.js';
 
 /* ------------------------------------------------------------------ *
@@ -273,6 +274,7 @@ export function buildTown(scene, { cell = 128, bulkCell = 128, detailCell = 0, s
   const fall = buildPetals(ctx, {
     count: TOWN.petals.trees, half: 24, trackZ: railZ, follow: () => camPos,
     emitters: [...(core.sakura?.emitters ?? []).map((e) => T.toWorld(e)), ...(frameSakura?.emitters ?? [])], onlyTrees: true, seed: 8211, exclude: indoors, land: true,
+    pup: { where: () => GUIDE.where?.() ?? null, listen: (fn) => { GUIDE.onPetal = fn; } },      // (Hachi's petal: the one he sneezes off his nose)
   });
   for (const m of fall.meshes) m.userData.dynamic = true;
   for (const m of petals.meshes) m.userData.dynamic = true;

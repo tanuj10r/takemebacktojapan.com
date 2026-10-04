@@ -34,6 +34,10 @@ const HALF_DEFAULT = 9.5;
  *                     roof's edge, a bonnet, a slat, a kerb), slides down the face of what stands taller than
  *                     it is instead of going through, lies flat a few seconds (a gust slides it), and shrinks
  *                     away before it falls again from a tree.
+ * @param opts.pup     { where(): { x, y, z, yaw, size }, listen(fn) }: Hachi's petal (Tan, 2026-10-04).  His own bit
+ *                     (animals/reactions.js `petal`: nose up after one, eyes big as it lands on his nose, a sneeze,
+ *                     a shake) had no petal in it; when it starts, the nearest one in the air comes down onto his
+ *                     nose in step with it (1.5 s), sits there, and is sneezed off (1.9 s) to fall on.
  */
 export function buildPetals(ctx, opts = {}) {
   const COUNT = opts.count ?? COUNT_DEFAULT;
@@ -124,6 +128,26 @@ export function buildPetals(ctx, opts = {}) {
     }
     return probe;
   };
+  /* Hachi's petal: one at a time, flown by hand */
+  const PUP = { down: 1.5, off: 1.9 };
+  let ride = null;
+  opts.pup?.listen(() => {
+    const h = opts.pup.where();
+    if (!h || ride) return;
+    let best = null, bd = Infinity;
+    for (const p of P) {
+      if (p.rest > 0 || p.y < -1) continue;
+      const d = Math.hypot(p.x - h.x, p.y - (h.y + 1.6), p.z - h.z);
+      if (d < bd) { bd = d; best = p; }
+    }
+    if (!best) return;
+    // from where it is if that is just over him, else from a little above and ahead of him
+    const fx = Math.sin(h.yaw), fz = Math.cos(h.yaw);
+    const from = bd < 2.2 && best.y > h.y + 0.9 ? { x: best.x, y: best.y, z: best.z } : { x: h.x + fx * 0.5 - fz * 0.35, y: h.y + 1.5, z: h.z + fz * 0.5 + fx * 0.35 };
+    ride = { p: best, t: 0, from };
+  });
+  const noseOf = (h, out) => { const k = h.size ?? 1; out.x = h.x + Math.sin(h.yaw) * 0.215 * k; out.y = h.y + 0.335 * k; out.z = h.z + Math.cos(h.yaw) * 0.215 * k; return out; };
+  const nose = { x: 0, y: 0, z: 0 };
   const flatQ = new THREE.Quaternion(), yawQ = new THREE.Quaternion(), X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
   const lay = (p, y) => {
     p.rest = REST[0] + (REST[1] - REST[0]) * ((p.phase * 0.37) % 1);
@@ -178,8 +202,33 @@ export function buildPetals(ctx, opts = {}) {
     const wind = gust * 5.4 * gustDir;
     const lift = gust * 1.5;
     if (LAND && !grid && (ctx.colliders?.length ?? 0) > 0) makeGrid();
+    const pupAt = ride ? opts.pup.where() : null;
+    if (ride && !pupAt) ride = null;
     for (let i = 0; i < P.length; i++) {
       const p = P[i];
+      if (ride && ride.p === p) {
+        // down onto his nose, a sway dying out as it comes; there until the sneeze; then off and up a little, to fall on
+        ride.t += dt;
+        noseOf(pupAt, nose);
+        if (ride.t < PUP.off) {
+          const u = Math.min(1, ride.t / PUP.down), e = u * u * (3 - 2 * u), f = ride.from, w = (1 - u) * 0.22;
+          p.x = f.x + (nose.x - f.x) * e + Math.sin(t * 2.3 + p.phase) * w;
+          p.y = f.y + (nose.y - f.y) * u;
+          p.z = f.z + (nose.z - f.z) * e + Math.cos(t * 1.9 + p.phase) * w;
+          p.angle += p.spinRate * dt * (1 - u);
+          q.setFromAxisAngle(p.spin, p.angle);
+          if (u >= 1) { flatQ.setFromAxisAngle(X, -Math.PI / 2 + 0.35); yawQ.setFromAxisAngle(Z, pupAt.yaw); q.copy(flatQ).multiply(yawQ); }
+          dummy.position.set(p.x, p.y, p.z);
+          dummy.quaternion.copy(q);
+          scaleV.setScalar(p.scale * (1 - 0.48 * e));      // (a petal is 18 cm and he 24 at the shoulder: on his nose, a small one)
+          dummy.scale.copy(scaleV);
+          dummy.updateMatrix();
+          p.mesh.setMatrixAt(p.idx, dummy.matrix);
+          continue;
+        }
+        p.x = nose.x + Math.sin(pupAt.yaw) * 0.12; p.z = nose.z + Math.cos(pupAt.yaw) * 0.12; p.y = nose.y + 0.16; p.rest = 0;
+        ride = null;
+      }
       if (p.rest > 0) {
         // landed: it lies there, slid a little by a gust (off its edge and it falls on), then shrinks away
         p.rest -= dt;
@@ -257,7 +306,7 @@ export function buildPetals(ctx, opts = {}) {
       else { air++; if (grid && look(p.x, p.z, p.y).wall) inside++; }
     }
     let my = 0, mn = 9, k = 0; for (const p of P) if (p.y > -1 && !(p.rest > 0)) { my += p.y; mn = Math.min(mn, p.y); k++; }
-    return { n: P.length, air, rest, high, inside, top: +top.toFixed(2), grid: grid ? grid.size : 0, meanY: +(my / Math.max(1, k)).toFixed(2), minY: +mn.toFixed(2), c: [+cxF.toFixed(0), +czF.toFixed(0)], t: +t.toFixed(1) };
+    return { n: P.length, air, rest, high, inside, top: +top.toFixed(2), grid: grid ? grid.size : 0, meanY: +(my / Math.max(1, k)).toFixed(2), minY: +mn.toFixed(2), c: [+cxF.toFixed(0), +czF.toFixed(0)], t: +t.toFixed(1), ride: ride ? +ride.t.toFixed(2) : null };
   });
   return { update, meshes };
 }

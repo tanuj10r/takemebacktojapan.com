@@ -54,7 +54,7 @@ const A = ANIMALS.guide;
  *  settled (the postcard, ui/postcard.js: the tour's ending), or when you whistle it to you before that (the bit cut
  *  short at your call).  `onNap`: called once it has lain down asleep there. */
 export const GUIDE = {
-  whistle: () => false, tipsy: () => {}, greeting: () => null, onNap: null, onTourEnd: null,
+  whistle: () => false, tipsy: () => {}, greeting: () => null, onNap: null, onTourEnd: null, onPetal: null,
   /** the konbini (store/shop.js, by main.js): what you bought, and where you are with it: 'hold' | 'eat' | 'done' */
   snack: () => {},
   /** after the tour, the pup by you and looked at: true while "E · Take the tour again" is on offer; `again()` takes it
@@ -788,7 +788,7 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
     else if (kind === 'catch') { SHOW.up = 0; SHOW.wag = 1.2; G.act = null; FX.stop(); FX.play('sneeze'); }
   };
   const _where = { x: 0, y: 0, z: 0, watching: false };
-  GUIDE.where = () => { _where.x = G.x; _where.y = G.y; _where.z = G.z; _where.watching = SHOW.sat; return _where; };
+  GUIDE.where = () => { _where.x = G.x; _where.y = G.y; _where.z = G.z; _where.yaw = G.yaw; _where.size = A.size; _where.watching = SHOW.sat; return _where; };
   /** Where the tour stands (the phone's guide line and its follow-Hachi walk): the next stop not had (its tour leg's
    *  `id` or `visit`, and where), how many of the stops are had, how many there are, his state and target. */
   GUIDE.tourInfo = () => {
@@ -1486,7 +1486,7 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
     if (G.waitT < 1) RX.yawned = 0;
     if (G.waitT > R_.bored * (1 + RX.yawned)) { FX.play(RX.yawned++ % 2 ? 'slowBlink' : 'yawn'); return; }
     // a petal comes down past its nose now and then
-    if (G.waitT > 1.5 && !inStore(G) && (RX.petal -= dt) <= 0) { RX.petal = R_.petal[0] + Math.random() * (R_.petal[1] - R_.petal[0]); FX.play('petal'); }
+    if (G.waitT > 1.5 && !inStore(G) && (RX.petal -= dt) <= 0) { RX.petal = R_.petal[0] + Math.random() * (R_.petal[1] - R_.petal[0]); FX.play('petal'); GUIDE.onPetal?.(); }   // (a real one comes down onto his nose: world/petals.js)
   };
 
   /* ---- the pigeons (the shopping street's and the plaza's): leading past them, it can't help itself ---- */
@@ -2429,6 +2429,8 @@ export function buildGuide(ctx, { spots, shadows, core, facing }) {
       tipsy,
       /** the reactions (reactions.js), the konbini bits, the tour again, the crossing's bells, the pigeons' hook */
       fx: FX, snack, again, offer: () => GUIDE.offer(), pal: startPal, bells: GUIDE.bells, pigeons: PIGEONS, RX,
+      /** dev: his petal bit now, with the real petal (world/petals.js) */
+      petalNow() { FX.play('petal'); GUIDE.onPetal?.(); },
       /** How far the lowest drawn part of the pup is over the ground it stands on (m; negative: under it), and the
        * highest: the pup alone, drawn side-on and end-on through an orthographic lens into a small target, read back
        * (Tan: rolling about tipsy it sank under the road; the checks hold every bit to the surface with this). */
