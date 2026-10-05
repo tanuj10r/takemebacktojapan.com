@@ -151,7 +151,7 @@ export async function renderDeterministic({ name, w, h, fps = 60, total, canvas,
 /* ---------------------------------------- a small MP4 muxer ----------------------------------------
  * One video (avc1) and one audio track (mp4a, or Opus), each sample its own chunk, mdat before moov.  Enough for
  * QuickTime, Chrome and editors. */
-function muxMP4({ w, h, fps, video, vConfig, audio, aConfig, acodec, sr }) {
+export function muxMP4({ w, h, fps, video, vConfig, audio, aConfig, acodec, sr }) {
   const enc = new TextEncoder();
   const u32 = (v) => [(v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255];
   const u16 = (v) => [(v >>> 8) & 255, v & 255];

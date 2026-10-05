@@ -49,7 +49,7 @@ try {
     return +(n / (v.currentTime - t0)).toFixed(1);
   });
   const sheet = await page.evaluate(async (times) => {
-    const v = document.getElementById('v'), W = 270, H = 480, per = times.length > 14 ? 13 : times.length, c = Object.assign(document.createElement('canvas'), { width: W * per, height: (H + 26) * Math.ceil(times.length / per) }), g = c.getContext('2d');
+    const v = document.getElementById('v'), wide = v.videoWidth > v.videoHeight, W = wide ? 480 : 270, H = wide ? 270 : 480, per = times.length > (wide ? 6 : 14) ? (wide ? 6 : 13) : times.length, c = Object.assign(document.createElement('canvas'), { width: W * per, height: (H + 26) * Math.ceil(times.length / per) }), g = c.getContext('2d');
     g.fillStyle = '#1b1626'; g.fillRect(0, 0, c.width, c.height); g.fillStyle = '#fff'; g.font = '600 14px system-ui';
     for (let i = 0; i < times.length; i++) { v.currentTime = times[i]; await new Promise((r) => { v.onseeked = r; }); const x = (i % per) * W, y = Math.floor(i / per) * (H + 26); g.drawImage(v, x, y, W, H); g.fillText(times[i].toFixed(2) + ' s', x + 6, y + H + 18); }
     return c.toDataURL('image/jpeg', 0.88);
