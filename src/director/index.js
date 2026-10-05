@@ -146,6 +146,10 @@ export function startDirector(G) {
     if (def.clean) { for (const g of ['amb', 'fx', 'music']) sound.setGroup(g, false); sfxOn(false); }
     // (and its own petal: the town's fall, a petal of which can drift past 30 cm from the lens, stays out of it)
     for (const m of world.petalMeshes ?? []) m.visible = !def.clean;
+    /* (Tan, 2026-10-05: "get rid of the lines on Hachi's face and body") they were not the shadow map: his cel
+     * bands' edges, streaked down his front by the low sun from his side.  A shot may turn the light about him
+     * (`lightTurn`, his shading alone) onto his face; the town's light is as it was. */
+    guide.herd.mesh.material.userData.lightTurn.value = def.lightTurn ?? 0;
     env.blur = 0; env.roll = 0;
     han.release();
     pup.show(true); pup.double(null);

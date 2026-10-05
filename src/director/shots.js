@@ -443,7 +443,9 @@ const B = [
 /* (Tan, 2026-10-04: tightened from 28 s and eight sounds to 20 s and ten beats; the cuckoo, the chick's twin, went;
  * ぺったん堂's pounding and a petal on his nose came in.  The store's own tunes are in: "music and sound are the
  * highlight of the launch"; Han's song is in neither video.) */
-const C_LEN = 21.6;        // (20 s of sounds, then 1.6 s of his happy face under the end card)
+/* (Tan, 2026-10-05: "it cuts the chime in half. Complete the entire chime and end the video") the chime's file is
+ * 5.9 s and plays whole, to its last note's ring; the take ends with it. */
+const C_LEN = 23.9;
 const C_CUES = [
   { t: 0, name: 'wind', gain: 0.22, dur: C_LEN, loop: true, fadeIn: 0.5, fadeOut: 1.0, bed: true },
   { t: 0.6, name: 'walk-piyo', gain: 0.8, dur: 2.0, loop: true, loopEnd: 1.8, offset: 0.04, fadeOut: 0.25, cap: 'ぴよぴよ · crosswalk chick' },
@@ -455,7 +457,7 @@ const C_CUES = [
   { t: 12.7, name: 'donki-theme', gain: 0.75, dur: 2.3, fadeOut: 0.3, cap: 'ドンペン堂 · megastore theme' },
   { t: 15.0, name: 'petal', dur: 1.6, cap: '桜 · a petal' },                       // (no file: the wind, and his sneeze)
   { t: 16.6, name: 'ka-ching', gain: 0.95, dur: 1.3, offset: 0.38, cap: 'チャリン · ka-ching' },
-  { t: 17.9, name: 'lawson-chime', gain: 0.8, dur: 3.4, offset: 0.055, fadeOut: 0.9, cap: '入店チャイム · konbini chime' },
+  { t: 17.9, name: 'lawson-chime', gain: 0.8, dur: 5.85, offset: 0.055, fadeOut: 0.15, cap: '入店チャイム · konbini chime' },
 ];
 const C = [
   {
@@ -468,7 +470,8 @@ const C = [
      * visible") the lens was 0.9 m off at his eye height, looking up his chin.  Now it stands back and above, looking
      * down at him as you do in the game, and wide: he sits in the lower part of the frame, NIPPON across the middle
      * and Fuji over it. */
-    at: { x: -1.2, z: 17.4 }, bearing: 9, dist: 1.15, fov: 54, camY: 0.72, lookY: 0.6, lookAhead: 1.2,
+    // (Tan, 2026-10-05: "a little bigger in the frame": the lens 0.95 m off, from 1.15)
+    at: { x: -1.2, z: 17.4 }, bearing: 9, dist: 0.95, fov: 54, camY: 0.72, lookY: 0.5, lookAhead: 1.2, lightTurn: 1.25,
     setup({ pup, env }) {
       const p = this.at;
       const b = this.bearing * Math.PI / 180;                    // (degrees right of -z) Fuji's peak at 9.8: to his right
@@ -509,8 +512,9 @@ const C = [
       pup.react('freeze', 16.6, { dur: 1.3 });
       // 17.9-20 the chime: joy: the wiggle, the happiest face
       pup.react('happyWiggle', 17.9, { dur: 1.2, seated: true });
-      pup.react('bigSmile', 18.9, { dur: 2.7 });
-      pup.react('slowBlink', 20.4, { dur: 0.9, keep: true });
+      pup.react('bigSmile', 18.9, { dur: 5.0 });
+      pup.react('slowBlink', 21.0, { dur: 0.9, keep: true });
+      pup.react('slowBlink', 22.8, { dur: 0.9, keep: true });
       return {
         rig: (t) => {
           const d = this.dist * (1 - 0.08 * ease(t / C_LEN));       // a slow push-in, 8% closer by the end
@@ -611,7 +615,7 @@ function sandoPiece(env, t, pup) {
 export const VERSIONS = {
   A: { title: "Hachi's Big Day", shots: A, hook: "Hachi's big day 🐾", endLen: 1.5 },
   B: { title: 'Hachi Fears Nothing', shots: B },
-  C: { title: 'Hachi Hears Japan', shots: C, cues: C_CUES, hook: 'Hachi hears Japan 🔊', endLen: 1.7, capY: 0.5, endY: 0.47 },
+  C: { title: 'Hachi Hears Japan', shots: C, cues: C_CUES, hook: 'Hachi hears Japan 🔊', endLen: 2.2, capY: 0.5, endY: 0.47 },
 
 };
 export { C_CUES };

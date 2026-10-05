@@ -26,6 +26,7 @@ varying vec3 vLocal;
 varying float vPart;
 varying vec4 vPose;
 varying vec4 vPose2;
+uniform float uLightTurn;
 vec3 rotX(vec3 v, float a) { float c = cos(a), s = sin(a); return vec3(v.x, c * v.y - s * v.z, s * v.y + c * v.z); }
 vec3 rotY(vec3 v, float a) { float c = cos(a), s = sin(a); return vec3(c * v.x + s * v.z, v.y, -s * v.x + c * v.z); }
 vec3 rotZ(vec3 v, float a) { float c = cos(a), s = sin(a); return vec3(c * v.x - s * v.y, s * v.x + c * v.y, v.z); }
@@ -44,7 +45,7 @@ export function animalMaterial({ tint = 0x6c5f8c, rig = 'void rig(inout vec3 p, 
   const prev = mat.onBeforeCompile;
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.call(mat, shader, renderer);
-    Object.assign(shader.uniforms, uniforms);
+    Object.assign(shader.uniforms, uniforms, { uLightTurn: mat.userData.lightTurn });
     shader.vertexShader = HEADER + rig + '\n' + shader.vertexShader
       .replace('#include <beginnormal_vertex>', `
         vec3 rigP = position;
@@ -52,13 +53,17 @@ export function animalMaterial({ tint = 0x6c5f8c, rig = 'void rig(inout vec3 p, 
         vLocal = position;
         vPart = aJoint.w;
         vPose = aPose; vPose2 = aPose2;
-        rig(rigP, objectNormal);`)
+        rig(rigP, objectNormal);
+        objectNormal = rotY(objectNormal, uLightTurn);`)
       .replace('#include <begin_vertex>', 'vec3 transformed = rigP;');
     shader.fragmentShader = 'varying vec3 vLocal;\nvarying float vPart;\nvarying vec4 vPose;\nvarying vec4 vPose2;\n' + fragHead + '\n'
       + shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + frag);
   };
   mat.customProgramCacheKey = () => 'animal_' + key;
   mat.userData.animal = key;
+  /* the light, turned about the animal for its shading alone (0 in the game: Director Mode's close-ups turn the low
+   * sun onto the pup's face, where from the side its band edges streaked his front) */
+  mat.userData.lightTurn = { value: 0 };
   return mat;
 }
 
