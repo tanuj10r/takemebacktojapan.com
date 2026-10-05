@@ -21,12 +21,14 @@ const W = +flag('w', 1920), H = +flag('h', 1080);
 // is for play at 60 fps; a frame-by-frame take can afford every pixel), so the master is 3840x2160.  The files:
 // the master, a 1080p brought down from it (every pixel of it four of the master's), and a 720p copy for a phone.
 const DSF = +flag('dsf', 2), SHARE_MBPS = +flag('share', 2.5);
+// --scenes <file>: another cut's scenes; --name: its files' name; --no4k: no master at the page's full pixels
+const SCENES = flag('scenes', './_gameplay-scenes.mjs'), NAME = flag('name', 'gameplay');
 const OUTS = [
-  ...(DSF > 1 ? [{ tag: `${W * DSF}x${H * DSF}`, w: W * DSF, h: H * DSF, bps: 42e6, codec: 'avc1.640034' }] : []),
+  ...(DSF > 1 && !argv.includes('--no4k') ? [{ tag: `${W * DSF}x${H * DSF}`, w: W * DSF, h: H * DSF, bps: 42e6, codec: 'avc1.640034' }] : []),
   { tag: `${W}x${H}`, w: W, h: H, bps: 20e6, codec: 'avc1.64002A' },
   { tag: `${W}x${H}-share`, w: Math.round(W * 2 / 3 / 2) * 2, h: Math.round(H * 2 / 3 / 2) * 2, bps: SHARE_MBPS * 1e6, codec: 'avc1.640020' },
 ];
-const OUT = path.resolve(flag('out', path.join(ROOT, 'docs', 'promo', 'out', 'gameplay.mp4')));      // (each file: gameplay-<its size>.mp4)
+const OUT = path.resolve(flag('out', path.join(ROOT, 'docs', 'promo', 'out', `${NAME}.mp4`)));      // (each file: gameplay-<its size>.mp4)
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 
 const LOCK = '/tmp/lawson-browser.lock';
@@ -133,6 +135,8 @@ try {
       /** a slow pan from yaw a to yaw b at a pitch over `sec` */
       pan: (a, b, pitch, sec) => new Promise((ok) => { S.go = null; const t0 = performance.now(); S.aim = () => { const u = Math.min(1, (performance.now() - t0) / 1000 / sec), e = u * u * (3 - 2 * u); if (u >= 1) setTimeout(ok, 0); return { yaw: a + wrap(b - a) * e, pitch, k: 8, max: 3 }; }; }),
       free: () => { S.go = null; S.aim = null; },
+      /** the promo's own dressing of the page (sizes for a phone, what is hidden) */
+      css: (text) => { const e = document.createElement('style'); e.textContent = text; document.head.appendChild(e); },
       /** fly the lens along `keys` [t, x, y, z, lookX, lookY, lookZ] (the look turning to the pup from `pupFrom` s) */
       drone: (keys, { pupFrom, pupTo } = {}) => new Promise((ok) => { S.go = null; S.aim = null; S.drone = { keys, dur: keys[keys.length - 1][0], t0: performance.now(), pupFrom, pupTo, done: ok }; }),
       droneT: () => (S.drone ? (performance.now() - S.drone.t0) / 1000 : -1),
@@ -143,7 +147,7 @@ try {
     };
   });
   const st = () => page.evaluate(() => window.GP.state());
-  const SHOTS = path.join(path.dirname(OUT), 'gameplay-dry'); if (DRY) fs.mkdirSync(SHOTS, { recursive: true });
+  const SHOTS = path.join(path.dirname(OUT), `${NAME}-dry`); if (DRY) fs.mkdirSync(SHOTS, { recursive: true });
   const snap = async (name) => { if (DRY) await page.screenshot({ path: path.join(SHOTS, name + '.jpg'), type: 'jpeg', quality: 70 }); };
   const gp = (fn, arg) => page.evaluate(fn, arg);
   const vnow = () => page.evaluate(() => window.VT.t / 1000);
@@ -195,7 +199,7 @@ try {
     }
     window.CAP = {
       C,
-      async start(w, h, outs, capture) {
+      async start(w, h, outs, capture, rec = true) {
         C.capture = capture;
         if (capture) {
           const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60, width: { ideal: w }, height: { ideal: h }, cursor: 'never' }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include' });
@@ -212,12 +216,12 @@ try {
             return q;
           });
         }
-        C.on = true; C.rec = true; C.keep.push([0, null]);
+        C.on = true; C.rec = rec; if (rec) C.keep.push([0, null]);
         C.done = loop();
         return { size: C.size ?? null, audio: !!VT.audio };
       },
       rec(on) { if (on === C.rec) return; C.rec = on; const t = C.frame / 60; if (on) C.keep.push([t, null]); else C.keep[C.keep.length - 1][1] = t; },
-      async stop() {
+      async stop({ fade = 0, xfade = 0.3 } = {}) {
         C.on = false; await C.done;
         if (C.rec) C.keep[C.keep.length - 1][1] = C.frame / 60;
         if (!C.capture) return { frames: C.frame, keep: C.keep };
@@ -226,14 +230,28 @@ try {
         // the sound: the kept stretches end to end (a few ms of fade at each join), levelled, AAC
         const { muxMP4 } = await import('/src/director/record.js'), { normalise } = await import('/src/director/loudness.js');
         const buf = await VT.audioEnd(), sr = buf.sampleRate, A = [buf.getChannelData(0), buf.getChannelData(1)];
-        const n = C.keep.reduce((a, [x, y]) => a + Math.round((y - x) * sr), 0), L = new Float32Array(n), Rr = new Float32Array(n), F = Math.round(0.012 * sr);
+        /* the kept stretches end to end.  At each join the two cross over `xfade` s: the stretch before runs on a
+         * little past its cut and the one after comes in from a little before its own (the sound went on unrecorded
+         * either side, so both are there), which is a dissolve where a butt join would be a jump.  `fade`: the last
+         * seconds down to nothing. */
+        const segs = C.keep.map(([x, y]) => ({ i0: Math.round(x * sr), len: Math.round((y - x) * sr) }));
+        const n = segs.reduce((a, q) => a + q.len, 0), L = new Float32Array(n), Rr = new Float32Array(n), h = Math.round(xfade / 2 * sr), N = A[0].length;
         let o = 0;
-        for (const [x, y] of C.keep) {
-          const i0 = Math.round(x * sr), len = Math.round((y - x) * sr);
-          for (let i = 0; i < len; i++) { const g = Math.min(1, i / F, (len - 1 - i) / F); L[o + i] = A[0][i0 + i] * g; Rr[o + i] = A[1][i0 + i] * g; }
-          o += len;
+        for (let k = 0; k < segs.length; k++) {
+          const q = segs[k], prev = segs[k - 1], next = segs[k + 1];
+          for (let i = 0; i < q.len; i++) {
+            let g = 1;
+            if (prev && i < h) g = Math.sin(Math.PI / 2 * (0.5 + i / (2 * h))) ** 2;               // in: the second half of the crossing
+            if (next && i >= q.len - h) g = Math.cos(Math.PI / 2 * (i - (q.len - h)) / (2 * h)) ** 2; // out: its first half
+            L[o + i] += A[0][q.i0 + i] * g; Rr[o + i] += A[1][q.i0 + i] * g;
+          }
+          // this stretch running on under the next one's first h, and coming in under the last h of the one before
+          if (next) for (let i = 0; i < h && o + q.len + i < n; i++) { const g = Math.cos(Math.PI / 2 * (h + i) / (2 * h)) ** 2, a = q.i0 + q.len + i; if (a < N) { L[o + q.len + i] += A[0][a] * g; Rr[o + q.len + i] += A[1][a] * g; } }
+          if (prev) for (let i = 1; i <= h && o - i >= 0; i++) { const g = Math.sin(Math.PI / 2 * (h - i) / (2 * h)) ** 2, a = q.i0 - i; if (a >= 0) { L[o - i] += A[0][a] * g; Rr[o - i] += A[1][a] * g; } }
+          o += q.len;
         }
         const loud = normalise([L, Rr], sr, { target: -16, ceil: -1.5 });
+        if (fade > 0) { const f = Math.round(fade * sr); for (let i = 0; i < f && i < n; i++) { const g = i / f; L[n - 1 - i] *= g; Rr[n - 1 - i] *= g; } }
         const chunksA = []; let aConfig = null;
         const aenc = new AudioEncoder({ output: (c, meta) => { const b = new Uint8Array(c.byteLength); c.copyTo(b); chunksA.push({ data: b, ts: c.timestamp, dur: c.duration }); if (meta?.decoderConfig) aConfig = meta.decoderConfig; }, error: (e) => { C.err = String(e); } });
         aenc.configure({ codec: 'mp4a.40.2', sampleRate: sr, numberOfChannels: 2, bitrate: 192000 });
@@ -252,16 +270,17 @@ try {
   });
   const REC = {
     /** from here the clock is ours: the first click (the song starts, and the tab may be read), then the take */
-    async start() {
+    async start({ rec = true } = {}) {
       await gp(() => window.VT.manual());
       await page.mouse.move(W * 0.3, H * 0.3);
       await page.mouse.click(W * 0.3, H * 0.3);
-      log('recording', JSON.stringify(await gp(([w, h, outs, cap]) => window.CAP.start(w, h, outs, cap), [W * DSF, H * DSF, OUTS, !DRY])));
+      log('recording', JSON.stringify(await gp(([w, h, outs, cap, rec]) => window.CAP.start(w, h, outs, cap, rec), [W * DSF, H * DSF, OUTS, !DRY, rec])));
     },
     pause: () => { log('--- cut (out)'); return gp(() => window.CAP.rec(false)); },
     resume: () => { log('--- cut (in)'); return gp(() => window.CAP.rec(true)); },
-    async stop() {
-      const r = await gp(() => window.CAP.stop());
+    async stop(o = {}) {
+      if (REC.stopped) return; REC.stopped = true;
+      const r = await gp((o) => window.CAP.stop(o), o);
       log('take', JSON.stringify(r));
       if (DRY) return;
       for (const [tag, bytes] of Object.entries(r.files)) {
@@ -276,7 +295,7 @@ try {
     },
   };
 
-  const { default: scenes } = await import('./_gameplay-scenes.mjs');
+  const { default: scenes } = await import(SCENES);
   await scenes({ page, gp, st, until, log, sleep: vsleep, REC, DRY, ONLY, W, H, snap });
   await REC.stop();
   log('done; page errors:', JSON.stringify(errs.slice(0, 5)));
