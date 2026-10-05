@@ -64,38 +64,35 @@ export default async function scenes({ page, gp, st, until, log, sleep, REC, DRY
     await sleep(0.5); await lockNow(); await sleep(1);
   }
 
-  /* ---- B: the shopping street: its first zebra's chirp; cut; ドンペン堂's theme and a slow look along its front ---- */
-  if (on('B')) {
-    log('B', JSON.stringify(await stage([50.4, 15.5, 0], [50, 11], { hear: 'walk1' })));
-    await gp(() => window.GP.follow({ r: 3.2 }));
-    await sleep(0.7);
+  /* ---- F: a flyby (Tan, 2026-10-05: "rather than literally following Hachi ... a drone showing us the shopping
+   * street, Donki and the station plaza while Hachi zoomies into the pigeons; 10-15 s"): the lens leaves your
+   * shoulders, comes down over the street's mouth, runs its length past ドンペン堂's front, and arrives over the plaza
+   * as he tears into the pigeons.  The HUD is off for it. ---- */
+  if (on('F')) {
+    const KEYS = [
+      [0, 50, 12, 26, 50, 4, 0],
+      [2.4, 50, 8.5, 7, 50, 3.5, -22],
+      [4.6, 48.4, 6.6, -18, 55, 5, -38],
+      [6.4, 47.4, 5.6, -34, 57.5, 5.5, -42],
+      [8.0, 48.2, 5.2, -52, 54, 4, -66],
+      [10.0, 50, 4.4, -80, 51.5, 1.2, -100],
+      [11.8, 50.3, 3.2, -91.5, 51.5, 0.6, -103],
+      [13.6, 50.4, 2.3, -97.2, 51.5, 0.5, -103.8],
+      [15.0, 50.9, 1.9, -99.6, 51.5, 0.4, -103.8],
+    ];
+    await gp(() => { window.GP.free(); window.GP.clean(true); window.GP.put(50, 26, 0); });
+    const flown = gp((K) => window.GP.drone(K, { pupFrom: 10.9 }), KEYS);
+    await sleep(0.4);
     await REC.resume();
-    await until('over the zebra', (s) => s.me[1] < -7.5, 40, 2);
+    for (const t of [1, 3, 5, 6.4, 8]) { while ((await gp(() => window.GP.droneT())) < t && (await gp(() => window.GP.droneT())) >= 0) await sleep(0.05); await snap('F-' + t); }
+    while ((await gp(() => window.GP.droneT())) < 9.9) await sleep(0.05);
+    // he is set down at the plaza's edge, his tour taken up there: the pigeons are on his way
+    log('F pup', JSON.stringify(await gp(() => { const g = window.__guide, T = g.A.tour, k = T.findIndex((L) => L.hear === 'station'); Object.assign(g.G, { x: 51.4, z: -91.5, speed: 0, act: null, field: null, state: 'home' }); g.leadFrom(k); return k; })));
+    for (const t of [11, 12, 13, 14, 14.9]) { while ((await gp(() => window.GP.droneT())) < t && (await gp(() => window.GP.droneT())) >= 0) await sleep(0.05); await snap('F-' + t); log('   ', JSON.stringify(await st())); }
+    await flown;
+    await sleep(0.3);
     await REC.pause();
-    log('B2', JSON.stringify(await stage([47.5, -24, 0], [48.5, -28.5], { hear: 'donki' })));
-    await gp(() => window.GP.follow({ r: 3.2 }));
-    await sleep(0.7);
-    await REC.resume();
-    await until('by the megastore', (s) => s.me[1] < -35.5, 40, 2);
-    await gp(() => window.GP.walkTo(46.6, -40.8, { r: 0.5, look: { x: 56, z: -34, y: 4 }, max: 8 }));
-    await gp(() => window.GP.pan(window.__scene.player.yaw, -Math.PI / 2 + 0.78, 0.2, 1.6));
-    await gp(() => window.GP.pan(-Math.PI / 2 + 0.78, -Math.PI / 2 - 0.8, 0.2, 7));
-    await sleep(0.5);
-    await REC.pause();
-  }
-
-  /* ---- C: the plaza: he can't help himself with the pigeons ---- */
-  if (on('C')) {
-    log('C', JSON.stringify(await stage([51, -88.5, 0], [51.4, -91.5], { hear: 'station' })));
-    await gp(() => window.GP.follow({ r: 3.2 }));
-    await sleep(0.7);
-    await REC.resume();
-    await until('he charges them', (s) => s.st === 'charge', 30, 2);
-    await gp(`window.GP.walkTo(51.7, -99.6, { r: 0.5, look: ${eyesOnPup}, max: 6 })`);
-    await gp(() => window.GP.watch());
-    await until('the charge is over', (s) => s.st !== 'charge', 20, 2);
-    await sleep(2.6);
-    await REC.pause();
+    await gp(() => { window.__scene.player.scripted = false; window.GP.clean(false); });
   }
 
   /* ---- D: the Deer Park gate: up onto his bench, his bedtime, the postcard and its song ---- */

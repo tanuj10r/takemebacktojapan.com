@@ -60,7 +60,23 @@ try {
     const tick = (now) => {
       fN++; worst = Math.max(worst, now - last); if (now - fT > 1000) { fps = Math.round(fN * 1000 / (now - fT)); S.fps = fps + '/' + Math.round(worst); fN = 0; fT = now; worst = 0; }
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      if (!player.scripted && !player.suspended && player.locked) {
+      if (S.drone) {
+        /* the drone: the lens off your shoulders and along a path (the game leaves a `scripted` player's view alone,
+         * as it does in the konbini); you are carried under it, so what is near loads, sounds and wakes as it passes */
+        const D = S.drone, u = Math.min(D.dur, (now - D.t0) / 1000), cam = window.__scene.camera;
+        const K = D.keys; let i = 0; while (i < K.length - 2 && K[i + 1][0] <= u) i++;
+        const P = (j) => K[Math.max(0, Math.min(K.length - 1, j))], a = P(i), b = P(i + 1), f = Math.max(0, Math.min(1, (u - a[0]) / (b[0] - a[0])));
+        const cr = (n) => { const p0 = P(i - 1)[n], p1 = a[n], p2 = b[n], p3 = P(i + 2)[n]; return 0.5 * (2 * p1 + (p2 - p0) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f * f + (3 * p1 - p0 - 3 * p2 + p3) * f * f * f); };
+        const x = cr(1), y = cr(2), z = cr(3); let lx = cr(4), ly = cr(5), lz = cr(6);
+        if (D.pupFrom !== undefined) { const w0 = Math.max(0, Math.min(1, (u - D.pupFrom) / 1.6)), w = w0 * w0 * (3 - 2 * w0), q = pup(); lx += (q.x - lx) * w; ly += (q.y + 0.25 - ly) * w; lz += (q.z - lz) * w; }
+        // (the look eased a little behind where it is asked: a gimbal, not a snap)
+        D.l ??= [lx, ly, lz]; const e = Math.min(1, dt * 5); D.l = [D.l[0] + (lx - D.l[0]) * e, D.l[1] + (ly - D.l[1]) * e, D.l[2] + (lz - D.l[2]) * e];
+        player.scripted = true; player.vel.set(0, 0, 0); player.pos.set(x, world.heightAt(x, z), z);
+        const dx = D.l[0] - x, dy = D.l[1] - y, dz = D.l[2] - z;
+        player.yaw = Math.atan2(-dx, -dz); player.pitch = Math.atan2(dy, Math.hypot(dx, dz));
+        cam.position.set(x, y, z); cam.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
+        if (u >= D.dur) { S.drone = null; D.done(); }
+      } else if (!player.scripted && !player.suspended && player.locked) {
         let t = typeof S.aim === 'function' ? S.aim(dt) : S.aim;
         if (t) {
           if (t.x !== undefined) { const dx = t.x - player.pos.x, dz = t.z - player.pos.z; t = { yaw: Math.atan2(-dx, -dz), pitch: Math.atan2((t.y ?? 1) - (player.pos.y + 1.6), Math.hypot(dx, dz)) + (t.up ?? 0) }; }
@@ -108,6 +124,11 @@ try {
       /** a slow pan from yaw a to yaw b at a pitch over `sec` */
       pan: (a, b, pitch, sec) => new Promise((ok) => { S.go = null; const t0 = performance.now(); S.aim = () => { const u = Math.min(1, (performance.now() - t0) / 1000 / sec), e = u * u * (3 - 2 * u); if (u >= 1) setTimeout(ok, 0); return { yaw: a + wrap(b - a) * e, pitch, k: 8, max: 3 }; }; }),
       free: () => { S.go = null; S.aim = null; },
+      /** fly the lens along `keys` [t, x, y, z, lookX, lookY, lookZ] (the look turning to the pup from `pupFrom` s) */
+      drone: (keys, { pupFrom } = {}) => new Promise((ok) => { S.go = null; S.aim = null; S.drone = { keys, dur: keys[keys.length - 1][0], t0: performance.now(), pupFrom, done: ok }; }),
+      droneT: () => (S.drone ? (performance.now() - S.drone.t0) / 1000 : -1),
+      /** the HUD off (a flyby is not play) and on again */
+      clean: (on) => { let e = document.getElementById('gp-clean'); if (!e) { e = document.createElement('style'); e.id = 'gp-clean'; e.textContent = 'body.gp-clean > *:not(#view) { opacity: 0 !important; }'; document.head.appendChild(e); } document.body.classList.toggle('gp-clean', on); },
       put: (x, z, yaw, pitch = 0) => { player.pos.set(x, world.heightAt(x, z), z); player.vel.set(0, 0, 0); player.yaw = yaw; player.pitch = pitch; },
       state: () => { const s = g.state(), v = window.__store.shop?.debug?.visit?.(); return { fps: S.fps, st: s.state, leg: s.leg, tgt: s.target, act: s.act, pup: [s.x, s.z], me: [+player.pos.x.toFixed(1), +player.pos.z.toFixed(1)], d: +Math.hypot(player.pos.x - s.x, player.pos.z - s.z).toFixed(1), visit: v?.active ? (v.cur?.label ?? v.cur?.kind ?? '-') + '@' + v.t.toFixed(1) : null, fx: g.fx?.name?.() ?? g.fx?.cur?.name ?? null, toasts: S.toasts.splice(0) }; },
     };
@@ -158,7 +179,7 @@ try {
           C.enc2.encode(f2, { keyFrame: C.out % 120 === 0 }); f2.close();
           f.close(); C.out++;
           while (C.enc.encodeQueueSize > 4 || C.enc2.encodeQueueSize > 4) await wait(2);
-        } else if (C.frame % 6 === 0) await wait(0);
+        } else await wait(3);                     // (between takes the game runs on unrecorded: no faster than the script can watch it, ~4x)
       }
     }
     window.CAP = {
