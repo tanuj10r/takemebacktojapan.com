@@ -1,3 +1,4 @@
+import { normalise } from './loudness.js';
 /* ------------------------------------------------------------------ *
  * Recording (Director Mode, dev only; Part 1.9-1.10, Version C's 4K).
  *
@@ -126,6 +127,8 @@ export async function renderDeterministic({ name, w, h, fps = 60, total, canvas,
   });
   aenc.configure({ codec: acodec, sampleRate: sr, numberOfChannels: 2, bitrate: 192000 });
   const L = mix.getChannelData(0), R = mix.getChannelData(1);
+  // (a version may ask for a loudness: `lufs`, with the true peak under `peak` dBTP; loudness.js)
+  const loud = version.lufs !== undefined ? normalise([L, R], sr, { target: version.lufs, ceil: version.peak ?? -1.5 }) : null;
   const FR = 1024;
   for (let i = 0; i < L.length; i += FR) {
     const k = Math.min(FR, L.length - i);
@@ -140,7 +143,7 @@ export async function renderDeterministic({ name, w, h, fps = 60, total, canvas,
 
   const file = muxMP4({ w, h, fps, video: chunksV, vConfig, audio: chunksA, aConfig, acodec, sr });
   const blob = new Blob([file], { type: 'video/mp4' });
-  window.__lastRecording = { name: `${name}.mp4`, size: blob.size, frames: n, video: chunksV.length, audio: chunksA.length, codec, acodec };
+  window.__lastRecording = { name: `${name}.mp4`, size: blob.size, frames: n, video: chunksV.length, audio: chunksA.length, codec, acodec, loud };
   download(blob, `${name}.mp4`);
   return window.__lastRecording;
 }

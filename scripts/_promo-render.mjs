@@ -10,7 +10,7 @@ import { createServer } from 'vite';
 import { chromium } from 'playwright';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const [version = 'C', w = '1080', h = '1920', mbps = ''] = process.argv.slice(2);      // (mbps: the video's bit rate; blank: 20 at 1080, 45 at 4K)
+const [version = 'C', w = '1080', h = '1920', mbps = '', tagArg = ''] = process.argv.slice(2);      // (tag: '' with Mbps is '-share'; 'full' for none)      // (mbps: the video's bit rate; blank: 20 at 1080, 45 at 4K)
 const OUT = path.resolve(path.join(ROOT, 'docs', 'promo', 'out'));
 fs.mkdirSync(OUT, { recursive: true });
 const LOCK = '/tmp/lawson-browser.lock';
@@ -36,12 +36,12 @@ try {
   await page.waitForTimeout(3000);
   await document_fonts(page);
   const t0 = Date.now();
-  const r = await page.evaluate(async ([v, w, h, mbps]) => {
+  const r = await page.evaluate(async ([v, w, h, mbps, tagArg]) => {
     const D = window.__director;
     D.S.version = v;
-    await D.renderHiRes({ w, h, bitrate: mbps ? mbps * 1e6 : null, tag: mbps ? '-share' : '' });
+    await D.renderHiRes({ w, h, bitrate: mbps ? mbps * 1e6 : null, tag: tagArg === 'full' ? '' : mbps ? '-share' : '' });
     return window.__lastRecording ?? null;
-  }, [version, +w, +h, +mbps]);
+  }, [version, +w, +h, +mbps, tagArg]);
   await page.waitForTimeout(4000);
   console.log('rendered', JSON.stringify(r), 'in', Math.round((Date.now() - t0) / 1000) + ' s', 'errors', JSON.stringify(errs.slice(0, 4)));
   if (!saved.some((f) => f.endsWith('.mp4'))) process.exitCode = 1;

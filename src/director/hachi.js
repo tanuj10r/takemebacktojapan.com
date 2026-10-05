@@ -36,6 +36,7 @@ const BASE = () => ({
   dy: 0, pitch: 0, roll: 0, dyaw: 0, fwd: 0, side: 0, tremble: 0, shake: 0, eye: 0, blink: 1,
 });
 const KEYS = Object.keys(BASE());
+const BIG = ['look', 'nod', 'tilt', 'perk', 'earsBack', 'earAsym', 'crouch', 'paw', 'paws', 'hips', 'dy', 'pitch', 'roll', 'tremble'];
 
 /* ---------------------------------------------------------------------------------------------------------------
  * The reaction library.  Each: its natural length (s), and a function of u (0..1 across it), its own seconds τ and
@@ -260,6 +261,11 @@ export const REACTIONS = {
       R.wagAmp = 0.5 + 0.5 * bow; R.wagRate = 22; R.eye = bow; R.lids = 0.15; R.blink = 0;
       R.dy = 0.03 * bow * Math.max(0, Math.sin(t * Math.PI * 2 * 5));
     },
+  },
+  /* cut D's first frame: eyes wide, ears up, on you (the look he gives the level crossing, without the cower) */
+  wideEyes: {
+    dur: 1.0, blend: [0.1, 0.2],
+    f(R) { R.big = 1; R.lids = 0; R.blink = 0; R.perk = 1.35; R.eye = 1; R.nod = -0.06; R.wagAmp = 0.1; },
   },
   playBow: {
     dur: 1.6, blend: [0.15, 0.25], snd: [[0.2, 'dog-boof', 0.8]],
@@ -492,6 +498,8 @@ export function makePuppet({ camera }, { index = 0, seed = 1 } = {}) {
         const w = Math.min(ease(τ / Math.max(1e-3, bi)), ease((q.D - τ) / Math.max(1e-3, bo)));
         const T = { ...R };
         q.r.f(T, τ / q.D, τ, q.D, q.o);
+        // (`x`, cut D: the reaction's motion larger than life, to read on a phone: its moving channels, further from rest)
+        if (q.o?.x) for (const c of BIG) T[c] = R[c] + (T[c] - R[c]) * q.o.x;
         for (const c of KEYS) R[c] = lerp(R[c], T[c], w);
       }
       // gait phase: by the ground covered, or by the reaction's own stride

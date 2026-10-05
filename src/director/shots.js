@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { tripod, dolly, orbit, drone, follow, hachiEye, cut, handheld } from './camera.js';
 import { KONBINI_DRIFT } from './han.js';
 import { lerp, ease, seg, bell } from './util.js';
+import { PRODUCT } from '../data/catalog.js';
+import { STRINGS } from '../data/strings.js';
 
 /* ------------------------------------------------------------------ *
  * The shots (Director Mode, dev only; Part 7 and Version C).  Each shot:
@@ -555,7 +557,8 @@ function petal(env, t, pup) {
   m.rotation.set(t * 5, t * 3, t * 4);
 }
 /** The petal that comes down onto the pup's nose (C1): down by 15.85 s, there until the sneeze, then off and away. */
-function nosePetal(env, t, at, nose) {
+function nosePetal(env, t, at, nose, t0 = 15) {
+  t = t - t0 + 15;                       // (its times are C1's; `t0`: when it starts to fall in another take)
   let m = env.props?.nosePetal;
   if (!m) {
     const g = new THREE.CircleGeometry(0.022, 10); g.scale(1, 0.72, 1);
@@ -616,10 +619,164 @@ function sandoPiece(env, t, pup) {
   m.rotation.set(t * 6, 0.4, t * 3);
 }
 
+/* ------------------------------------------ Version D: Hachi Hears Japan, and you can play it ------------------------------------------
+ * (Tan's brief, 2026-10-05) C is one still shot and never shows that this is a game.  D keeps C's picture and sounds
+ * and works with the sound off: a strong first frame (his wide eyes, the title already there), eight sounds with eight
+ * reactions each unlike its neighbours and half as large again, then he runs for the konbini, and the picture becomes
+ * the game itself: your own eyes, the card at the door, the doors, the chime, the shelves, your hand taking an
+ * onigiri.  The end card says it is free and in the browser. */
+const D1_LEN = 15.6, D2_LEN = 1.5, D3_LEN = 5.3, D4_LEN = 3.0, D_LEN = D1_LEN + D2_LEN + D3_LEN + D4_LEN;
+const D_IN = 0.5, D_CUT = [2.8, 5.2];           // the visit (shop.play) from 0.5 s in; at 2.8 s of the shot, on to its 5.2 s
+const D_CHIME = D1_LEN + D2_LEN + (2.23 - D_IN);  // (the doors' chime: 2.23 s into the visit, measured)
+const D_T = { piyo: 0.2, bells: 1.9, next: 3.8, flute: 6.1, mochi: 8.3, donki: 10.5, petal: 12.6, ching: 14.2 };
+const D_CUES = [
+  { t: 0, name: 'wind', gain: 0.24, dur: D_LEN, loop: true, fadeIn: 0.05, fadeOut: 0.6, bed: true },
+  { t: D_T.piyo, name: 'walk-piyo', gain: 0.8, dur: 1.7, loop: true, loopEnd: 1.8, offset: 0.04, fadeOut: 0.2, cap: 'ぴよぴよ · crosswalk chick' },
+  { t: D_T.bells, name: 'railway-bells', gain: 0.75, dur: 1.9, loop: true, offset: 0.13, fadeOut: 0.5, cap: '踏切 · level crossing' },
+  { t: D_T.next, name: 'train-nextstop', gain: 0.9, dur: 2.3, offset: 0.38, fadeOut: 0.3, cap: '次は渋谷 · next stop, Shibuya' },
+  { t: D_T.flute, name: 'rural-flute', gain: 0.9, dur: 2.2, offset: 4.0, fadeIn: 0.15, fadeOut: 0.4, cap: 'のんびり · slow life' },
+  { t: D_T.mochi, name: 'mochi-pound', gain: 0.9, dur: 2.2, offset: 0.9, fadeOut: 0.25, cap: 'ぺったん · mochi pounding' },
+  { t: D_T.donki, name: 'donki-theme', gain: 0.75, dur: 2.1, fadeOut: 0.25, cap: 'ドンペン堂 · megastore theme' },
+  { t: D_T.petal, name: 'petal', dur: 1.6, cap: '桜 · a petal' },
+  { t: D_T.ching, name: 'ka-ching', gain: 0.95, dur: 1.4, offset: 0.38, cap: 'チャリン · ka-ching' },
+  // (no dead air on the run to the doors: the wind comes up between the last sound and the chime)
+  { t: D1_LEN - 0.3, name: 'wind', gain: 0.85, dur: D_CHIME - D1_LEN + 0.7, loop: true, fadeIn: 0.4, fadeOut: 0.6, bed: true },
+  { t: D_CHIME, name: 'lawson-chime', gain: 0.8, dur: 5.85, offset: 0.055, fadeOut: 0.15, capDur: 2.4, capY: 0.25, cap: '入店チャイム · konbini chime' },
+];
+/** a D shot's part of the cue list, played as the clock passes it (the real-time take; the render mixes it offline) */
+const dCues = (at) => (t, e) => { for (const c of D_CUES) if (!c._on && c.name !== 'petal' && at + t >= c.t && c.t >= at - 1e-6 && at + t < c.t + 0.2) { c._on = true; e.clip(c); } };
+const D_SEAT = { at: { x: -1.2, z: 17.4 }, bearing: 9, dist: 0.95, fov: 54, camY: 0.72, lookY: 0.5, lookAhead: 1.2 };
+const dSeat = () => {
+  const p = D_SEAT.at, b = D_SEAT.bearing * Math.PI / 180;
+  return { p, b, yaw: Math.atan2(-Math.sin(b), Math.cos(b)), cam: (d) => ({ p: V(p.x - Math.sin(b) * d, D_SEAT.camY, p.z + Math.cos(b) * d), l: V(p.x + Math.sin(b) * D_SEAT.lookAhead, D_SEAT.lookY, p.z - Math.cos(b) * D_SEAT.lookAhead), fov: D_SEAT.fov }) };
+};
+const D = [
+  {
+    id: 'D1', name: 'Eight sounds, eight reactions', dur: D1_LEN, look: 'golden', clean: true, lightTurn: 1.25,
+    setup({ pup, env }) {
+      const { p, yaw, cam } = dSeat(), X = 1.5, T = D_T;
+      pup.reset({ x: p.x, z: p.z, yaw, posture: 1 });
+      const src = (side, d = 1.6) => () => V(p.x + side * d, 0.8, p.z + 0.6);
+      const nose = V(p.x + Math.sin(yaw) * 0.225, 0.452, p.z + Math.cos(yaw) * 0.225);
+      const petalAt = (t) => { const u = seg(t, T.petal, T.petal + 0.85), e = u * u * (3 - 2 * u); return V(nose.x + (1 - e) * (0.16 + 0.05 * Math.sin(t * 9)), lerp(0.74, nose.y, u), nose.z + (1 - e) * 0.1); };
+      pup.look(0, D1_LEN, 'camera', 0.8);
+      // the first frame: wide eyes, ears up, on you (already there: it starts before the take does)
+      pup.react('wideEyes', -0.4, { dur: 0.75 });
+      // 1 the chick: the ears snap up, a big tilt of the head held, one ear cocked
+      pup.look(T.piyo, T.piyo + 1.5, src(1));
+      pup.react('headTilt', T.piyo + 0.1, { dur: 1.55, side: 1, hold: true, earAt: 0.1, x: X });
+      // 2 the bells: up off the ground on all four, then low, ears flat, trembling
+      pup.react('startle', T.bells, { dur: 0.6, x: X });
+      pup.react('scared', T.bells + 0.5, { dur: 1.3, seated: true, x: 1.3 });
+      // 3 the announcement: the head whips round to it, then slowly back to you, tilted the other way: "what?"
+      pup.look(T.next + 0.05, T.next + 0.95, src(-1, 4), 1);
+      pup.react('headTilt', T.next + 0.95, { dur: 1.3, side: -1, hold: true, slow: true, ask: true, x: X });
+      // 4 the flute: settled, a slow blink, a yawn as wide as his head
+      pup.react('calm', T.flute, { dur: 2.2 });
+      pup.react('slowBlink', T.flute + 0.15, { dur: 0.7 });
+      pup.react('yawn', T.flute + 0.8, { dur: 1.3, x: 1.3 });
+      // 5 the mochi: a nod on the blow, a hop where he sits at the rabbits' shout, a nod on the next
+      pup.react('bob', T.mochi, { dur: 0.85, bpm: 74, x: X });
+      pup.react('startle', T.mochi + 0.88, { dur: 0.45, seated: true, x: X });
+      pup.react('bob', T.mochi + 1.35, { dur: 0.85, bpm: 74, x: X });
+      // 6 the megastore's theme: a spin in the air, then dancing on his front paws
+      pup.react('hopSpin', T.donki + 0.05, { dur: 0.95 });
+      pup.react('tippyTaps', T.donki + 1.0, { dur: 1.1, x: X });
+      // 7 a petal: his eyes on it all the way down onto his nose; the sneeze throws it off
+      pup.look(T.petal, T.petal + 0.95, () => { const q = petalAt(Math.min(T.petal + 0.85, this._t ?? T.petal)); q.y = Math.min(q.y, nose.y + 0.16); q.x += Math.sin(yaw) * 0.5; q.z += Math.cos(yaw) * 0.5; return q; });
+      pup.react('sneeze', T.petal + 0.95, { dur: 0.65, x: X });
+      // 8 ka-ching: frozen, eyes huge, a paw up ("...treat?"), then the wiggle
+      pup.react('freeze', T.ching, { dur: 0.85, x: 1.3 });
+      pup.react('happyWiggle', T.ching + 0.8, { dur: 0.6, seated: true, x: X });
+      const cues = dCues(0);
+      return {
+        // (C's slow push-in, 6% over the sounds)
+        rig: (t) => cam(D_SEAT.dist * (1 - 0.06 * ease(t / D1_LEN))),
+        update: (t, dt, e) => { this._t = t; cues(t, e); nosePetal(env, t, petalAt, nose, T.petal); },
+        end() { for (const c of D_CUES) c._on = false; if (env.props?.nosePetal) env.props.nosePetal.visible = false; },
+      };
+    },
+  },
+  {
+    id: 'D2', name: 'Off to the konbini', dur: D2_LEN, look: 'golden', clean: true, lightTurn: 1.25, noCollide: true,
+    setup({ pup }) {
+      // he turns from you and runs for the store, straight down the lens's own line; the lens goes with him, closing
+      // up as it does (it starts exactly where D1's stood: no jump)
+      const { p, b, yaw } = dSeat(), back0 = D_SEAT.dist * 0.94;
+      pup.reset({ x: p.x, z: p.z, yaw, posture: 1 });
+      pup.react('happyWiggle', -0.25, { dur: 0.35, seated: true });
+      pup.say(0.05, 'dog-boof', 0.85);
+      pup.go(0.1, { x: p.x + Math.sin(b) * 7, z: p.z - Math.cos(b) * 7 }, 'jog', { straight: true });
+      pup.say(0.45, 'dog-pant', 0.8);
+      pup.say(0.95, 'dog-yip', 0.8);
+      const chase = { p: null, v: 0 };
+      const cues = dCues(D1_LEN);
+      return {
+        rig: (t) => {
+          const s = pup.state, along = (s.x - p.x) * Math.sin(b) - (s.z - p.z) * Math.cos(b);       // how far he has gone
+          const back = back0 + 0.28 * ease(t / 0.9), d = Math.max(0, along) - 0.0;
+          const c = { x: p.x + Math.sin(b) * (d - back), z: p.z - Math.cos(b) * (d - back) };
+          return { p: V(c.x, D_SEAT.camY - 0.1 * ease(t / 1.0), c.z), l: V(p.x + Math.sin(b) * (d + D_SEAT.lookAhead), D_SEAT.lookY - 0.06 * ease(t / 1.0), p.z - Math.cos(b) * (d + D_SEAT.lookAhead)), fov: D_SEAT.fov };
+        },
+        update: (t, dt, e) => cues(t, e),
+        end() { for (const c of D_CUES) c._on = false; },
+      };
+    },
+  },
+  {
+    id: 'D3', name: 'The game: in at the doors, the shelves, an onigiri', dur: D3_LEN, look: 'golden', clean: true, pov: true, noCollide: true, lightTurn: 'auto',
+    setup({ pup, shop, player, camera, env }) {
+      /* The real konbini visit (store/shop.js `play`: what the number key at the door starts), in your own eyes: the
+       * walk to the doors, their opening and the chime are the game's; one cut, from just inside to the chilled aisle,
+       * where your hand goes up and takes the onigiri.  Hachi waits by the door, as he does in the game. */
+      const ID = 'onigiri_tuna', S = STRINGS.store;
+      pup.reset({ x: -3.0, z: 0.75, yaw: 0.35, posture: 1 });
+      pup.look(0, D3_LEN, 'camera', 0.9);
+      pup.react('tippyTaps', 0.0, { dur: 1.4 });
+      pup.say(0.25, 'dog-yip', 0.75);
+      const rows = shop.menu.map((id) => ({ name: S.menuNames[id] ?? PRODUCT[id].nameEn, jp: PRODUCT[id].nameJa, price: '¥' + PRODUCT[id].priceYen.toLocaleString('en') }));
+      const pick = shop.menu.indexOf(ID);
+      let k = -1;
+      const ff = (sec) => { for (let u = 0; u < sec - 1e-6;) { const d = Math.min(1 / 60, sec - u); env.G.world.update(d, camera); shop.update(d, camera, 0); u += d; } };
+      const cues = dCues(D1_LEN + D2_LEN);
+      return {
+        rig: () => {
+          const d = new THREE.Vector3(); camera.getWorldDirection(d);
+          return { p: camera.position.clone(), l: camera.position.clone().add(d), fov: 62 };
+        },
+        update(t, dt, e) {
+          if (k < 0) { player.pos.set(-2.3, player.pos.y, 4.6); player.yaw = 0; player.pitch = 0; shop.play(ID); ff(D_IN); k = 0; }
+          if (k === 0 && t >= D_CUT[0]) { ff(D_CUT[1] - (D_IN + D_CUT[0])); k = 1; pup.show(false); }
+          cues(t, e);
+          // the game's HUD (overlay.js draws it into the frame): the crosshair; the card at the door, your key going down
+          e.hud = { cross: true, menu: t < 0.75 ? { a: 1 - ease((t - 0.55) / 0.2), title: S.menuTitle, hint: S.menuHint, rows, pick: t > 0.18 ? pick : -1 } : null };
+        },
+        end() { for (const c of D_CUES) c._on = false; env.hud = null; shop.debug?.cancel?.(); },
+      };
+    },
+  },
+  {
+    id: 'D4', name: 'The end card over his happy face', dur: D4_LEN, look: 'golden', clean: true, lightTurn: 1.25,
+    setup({ pup }) {
+      const { p, yaw, cam } = dSeat();
+      pup.reset({ x: p.x, z: p.z, yaw, posture: 1 });
+      pup.look(0, D4_LEN, 'camera', 0.8);
+      pup.react('bigSmile', -0.3, { dur: D4_LEN + 0.6 });
+      pup.react('happyWiggle', 0.15, { dur: 1.1, seated: true });
+      pup.react('slowBlink', 1.7, { dur: 0.9, keep: true });
+      pup.say(2.3, 'dog-giggle', 0.85);
+      const cues = dCues(D1_LEN + D2_LEN + D3_LEN);
+      return { rig: () => cam(D_SEAT.dist * 0.94), update: (t, dt, e) => cues(t, e), end() { for (const c of D_CUES) c._on = false; } };
+    },
+  },
+];
+for (const c of D_CUES) c._on = false;
+
 export const VERSIONS = {
   A: { title: "Hachi's Big Day", shots: A, hook: "Hachi's big day 🐾", endLen: 1.5, endY: 0.2 },
   B: { title: 'Hachi Fears Nothing', shots: B },
   C: { title: 'Hachi Hears Japan', shots: C, cues: C_CUES, hook: 'Hachi hears Japan 🔊', endLen: 1.4, capY: 0.5, endY: 0.47 },
+  D: { title: 'Hachi Hears Japan: play it', shots: D, cues: D_CUES, hook: 'Hachi hears Japan 🔊', hookHold: 1.9, soundOn: [1.75, D1_LEN + 0.1], endLen: D4_LEN, endLine: 'Play free in your browser', capY: 0.5, endY: 0.44, lufs: -15, peak: -1.5 },
 
 };
 export { C_CUES };

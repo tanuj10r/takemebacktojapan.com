@@ -159,7 +159,7 @@ export function startDirector(G) {
      * light top and dark underside, a zebra up close.  There his cel ramp is two steps (lit wherever he faces the
      * light, the shade only at his edges) and the light comes from the lens. */
     guide.herd.mesh.material.gradientMap = def.lightTurn === 'auto' ? ramp2 : ramp0;
-    env.blur = 0; env.roll = 0;
+    env.blur = 0; env.roll = 0; env.hud = null;
     han.release();
     pup.show(true); pup.double(null);
     const made = def.setup(env);
@@ -178,7 +178,7 @@ export function startDirector(G) {
     han.release();
     pup.double(null);
     own(false);
-    env.blur = 0;
+    env.blur = 0; env.hud = null;
   }
   function stepShot(dt) {
     if (!shot) return;
@@ -228,7 +228,7 @@ export function startDirector(G) {
     // the words (overlay.js): a take's hook, its sounds' names, its end card; `S.words` off for a clean plate
     if (S.words !== false && shot && S.at !== null) {
       const V = VERSIONS[S.version], total = V.shots.reduce((a, s) => a + s.dur, 0);
-      drawOverlay(ctx2, size.w, size.h, { hook: V.hook ?? null, cues: V.cues ?? [], t: S.at + shot.t, total, title: GAME.title, url: 'takemebacktojapan.com', endLen: V.endLen ?? 1.8, capY: V.capY, endY: V.endY });
+      drawOverlay(ctx2, size.w, size.h, { hook: V.hook ?? null, cues: V.cues ?? [], t: S.at + shot.t, total, title: GAME.title, url: 'takemebacktojapan.com', endLen: V.endLen ?? 1.8, capY: V.capY, endY: V.endY, hookHold: V.hookHold, soundOn: V.soundOn, endLine: V.endLine, hud: env.hud });
     }
   }
   /** one step of the world and the shot, `dt` of shot time (the world slowed with it) */
@@ -297,13 +297,13 @@ export function startDirector(G) {
 
   /* ---------------- recording ---------------- */
   const recorder = makeRecorder({ canvas: out, sound, sfxTap, onState: (on) => panel.rec(on) });
-  function captions() {
-    const cues = VERSIONS.C.cues.filter((c) => c.cap);
+  function captions(v = 'C') {
+    const cues = VERSIONS[v].cues.filter((c) => c.cap);
     const ts = (x) => { const ms = Math.round(x * 1000); const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, sec = Math.floor(ms / 1000) % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')},${String(ms % 1000).padStart(3, '0')}`; };
-    const srt = cues.map((c, k) => `${k + 1}\n${ts(c.t)} --> ${ts(c.t + c.dur)}\n${c.cap}\n`).join('\n');
+    const srt = cues.map((c, k) => `${k + 1}\n${ts(c.t)} --> ${ts(c.t + (c.capDur ?? c.dur))}\n${c.cap}\n`).join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([srt], { type: 'text/plain' }));
-    a.download = 'hachi-C-captions.srt';
+    a.download = `hachi-${v}-captions.srt`;
     document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000);
     window.__lastCaptions = srt;
   }
@@ -377,7 +377,7 @@ export function startDirector(G) {
   /* ---------------- the deterministic render (Version C's 4K; any version at 1080x1920) ---------------- */
   async function renderHiRes({ w = S.version === 'C' ? 2160 : 1080, h = S.version === 'C' ? 3840 : 1920, bitrate = null, tag = '' } = {}) {
     stop();
-    if (S.version === 'C') captions();
+    if (VERSIONS[S.version].cues) captions(S.version);
     S.det = true;
     panel.rec(true);
     setSize(w, h, w * h > 2.2e6 ? 1 : 2);        // (1080: drawn at twice the size and brought down, for clean edges; 4K as it is)
