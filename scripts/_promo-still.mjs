@@ -22,11 +22,13 @@ try {
   await page.waitForFunction(() => window.__director, null, { timeout: 300000 });
   await page.waitForTimeout(3000);
   if (process.env.PRE) console.log('pre', JSON.stringify(await page.evaluate(process.env.PRE)));
-  const ts = String(t).split(',').map(Number);
-  for (const tt of ts) {
-    const url = await page.evaluate(async ([id, t, w, h]) => { const D = window.__director; D.S.version = id[0]; return D.still(id, t, { w, h, type: 'image/png' }); }, [id, tt, +w, +h]);
-    const f = ts.length > 1 ? out.replace(/\.png$/, `-${tt}.png`) : out;
+  // (a list: `A4:0.2,A12:0.8 x out.png` saves out-A4-0.2.png ...; one shot: `C1 0.9,9.2 out.png`)
+  const jobs = id.includes(':') ? id.split(',').map((j) => j.split(':')).map(([i, tt]) => [i, +tt]) : String(t).split(',').map((tt) => [id, +tt]);
+  for (const [i, tt] of jobs) {
+    const url = await page.evaluate(async ([id, t, w, h]) => { const D = window.__director; D.S.version = id[0]; return D.still(id, t, { w, h, type: 'image/jpeg', q: 0.9 }); }, [i, tt, +w, +h]);
+    const f = jobs.length > 1 ? out.replace(/\.(png|jpg)$/, `-${i}-${tt}.jpg`) : out;
     fs.writeFileSync(f, Buffer.from(String(url).split(',')[1], 'base64'));
     console.log('saved', f);
+    if (process.env.POST) console.log(i, tt, JSON.stringify(await page.evaluate(process.env.POST)));
   }
 } finally { await browser?.close(); await server?.close(); unlock(); }

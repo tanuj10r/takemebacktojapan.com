@@ -852,7 +852,7 @@ if (DIRECTOR) {
   import('./director/index.js').then((m) => {
     director = m.startDirector({
       THREE, scene, camera, renderer, pipeline, world, player, sound, hud, shop, sky, canvas, minimap, handsHud, controls,
-      applyLook, get lookName() { return lookName; }, setOutlineResolution, seatLights,
+      applyLook, get lookName() { return lookName; }, setOutlineResolution, seatLights, sunDir: SUN_DIR,
       soundTick(dt) {
         const inStore = !!shop?.inside(camera);
         sound.update(dt, { camera, inside: inStore, look: lookName, cooler: shop?.coolerAt });

@@ -162,7 +162,20 @@ export const REACTIONS = {
   },
   zoomies: {
     dur: 2.6, blend: [0.08, 0.2], snd: [[0.02, 'dog-awoo', 0.8], [0.84, 'dog-snort', 0.8]],
-    f(R, u, t, D) {
+    f(R, u, t, D, o = {}) {
+      /* (`o.back`, C1's chime: the circles go round behind where he sat, away from the lens, `o.turns` whole ones of
+       * radius `o.r`, and he ends where he began, up on his feet facing the lens: no flop) */
+      if (o.back) {
+        const turns = o.turns ?? 2, rr = o.r ?? 0.45, e = ease5(Math.min(1, u / 0.92));
+        const ang = 2 * Math.PI * turns * e, run = seg(u, 0, 0.06) * (1 - seg(u, 0.9, 0.97));
+        R.dyaw = u > 0.97 ? 0 : ang + Math.PI / 2 * run;
+        // (his offsets are along his heading, the turn included: the circle is laid out where he sat, then turned in)
+        const F = -rr * (1 - Math.cos(ang)), S = rr * Math.sin(ang), ca = Math.cos(R.dyaw), sa = Math.sin(R.dyaw);
+        R.fwd = F * ca + S * sa; R.side = -F * sa + S * ca;
+        R.amp = run; R.bound = 0.6 * run; R.earsBack = 0.6 * run; R.perk = 1.2; R.mouth = 0.35;
+        R.roll = -0.18 * run; R.hips = -0.15 * run; R.tuck = 0.2 * run; R.posture = 0; R.wagAmp = 0.8; R.wagRate = 20;
+        return;
+      }
       // tight fast circles, rump tucked, ears back, then a sudden flop
       const run = 1 - seg(u, 0.72, 0.8);
       const ang = 2 * Math.PI * 1.6 * ease5(Math.min(1, u / 0.8));
@@ -173,6 +186,16 @@ export const REACTIONS = {
       R.roll = -0.18 * run; R.hips = -0.15 * run; R.tuck = 0.2 * run;
       R.posture = 2 * seg(u, 0.8, 0.9);
       R.lids = 0.5 * seg(u, 0.85, 0.95); R.wagAmp = 0.6;
+    },
+  },
+  /* up, once round in the air, down: all joy (the game's hopSpin, reactions.js; higher here, for the lens) */
+  hopSpin: {
+    dur: 1.3, blend: [0.06, 0.2], snd: [[0.05, 'dog-yip', 0.9]],
+    f(R, u, t, D, o = {}) {
+      const air = Math.sin(Math.PI * clamp(u / 0.7, 0, 1));
+      R.posture = 0; R.dy = 0.16 * air; R.dyaw = u < 0.7 ? (o.s ?? 1) * 2 * Math.PI * seg(u, 0.05, 0.68) : 0; R.pitch = -0.12 * air;
+      R.mouth = 0.4; R.lids = 0.6; R.blink = 0; R.perk = 1.3; R.earsBack = 0.3 * air; R.wagAmp = 1; R.wagRate = 22; R.paws = 0.4 * air;
+      R.crouch = 0.4 * (1 - seg(u, 0, 0.08)) + 0.35 * bell(u, 0.7, 0.9, 0.05, 0.12);
     },
   },
   playBow: {

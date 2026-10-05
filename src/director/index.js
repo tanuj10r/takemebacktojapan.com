@@ -135,6 +135,11 @@ export function startDirector(G) {
    * texel: a metre from the lens it lay on him as diagonal stripes.  In these shots he takes no shadow from it (his
    * own toon shading and his contact shadow stay). */
   if (guide.herd?.mesh) { guide.herd.mesh.receiveShadow = false; for (const m of [guide.herd.mesh.material].flat()) m.needsUpdate = true; }
+  const _m4 = new THREE.Matrix4(), _mi = new THREE.Matrix4(), _mr = new THREE.Matrix4(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion();
+  const lightOnPup = (m) => guide.herd.mesh.material.userData.lightRot.value.setFromMatrix4(m);
+  const ramp0 = guide.herd.mesh.material.gradientMap, rd = ramp0.image.data;
+  const ramp2 = new THREE.DataTexture(new Uint8Array([rd[0], rd[1], rd[2], 255, ...rd.slice(rd.length - 4)]), 2, 1, THREE.RGBAFormat);
+  ramp2.minFilter = ramp2.magFilter = THREE.NearestFilter; ramp2.generateMipmaps = false; ramp2.needsUpdate = true;
   const RANDOM = Math.random;
   let shot = null;          // { def, rig, update, t }
   function begin(def, { seed = 1 } = {}) {
@@ -149,7 +154,11 @@ export function startDirector(G) {
     /* (Tan, 2026-10-05: "get rid of the lines on Hachi's face and body") they were not the shadow map: his cel
      * bands' edges, streaked down his front by the low sun from his side.  A shot may turn the light about him
      * (`lightTurn`, his shading alone) onto his face; the town's light is as it was. */
-    guide.herd.mesh.material.userData.lightTurn.value = def.lightTurn ?? 0;
+    lightOnPup(typeof def.lightTurn === 'number' ? _m4.makeRotationY(def.lightTurn) : _m4.identity());
+    /* ('auto', Version A) his ruff is rolls of fur: under any light from above or the side each roll takes its own
+     * light top and dark underside, a zebra up close.  There his cel ramp is two steps (lit wherever he faces the
+     * light, the shade only at his edges) and the light comes from the lens. */
+    guide.herd.mesh.material.gradientMap = def.lightTurn === 'auto' ? ramp2 : ramp0;
     env.blur = 0; env.roll = 0;
     han.release();
     pup.show(true); pup.double(null);
@@ -198,6 +207,19 @@ export function startDirector(G) {
     sky.dome.position.copy(camera.position);
     sky.clouds.position.copy(camera.position);
     G.seatLights(0);
+    /* ('auto': the sun on the pup comes from the lens, a little above and beside it, wherever the lens goes: the
+     * rotation that takes that direction to the sun's, in his own frame (his instance's turn, undone and redone)) */
+    if (shot?.def.lightTurn === 'auto') {
+      const q = pup.state;
+      const c = _a.set(camera.position.x - q.x, camera.position.y - (q.y ?? 0) - 0.25, camera.position.z - q.z).normalize();
+      c.add(_b.set(c.z, 0, -c.x).multiplyScalar(0.12)).normalize();
+      const sd = _b.copy(G.sunDir).normalize();
+      const R = _m4.makeRotationFromQuaternion(_q.setFromUnitVectors(c, sd));
+      guide.herd.mesh.getMatrixAt(0, _mi);
+      _mi.premultiply(guide.herd.mesh.matrixWorld);          // (the town's frame is turned: the mesh's own place in the world too)
+      _mi.extractRotation(_mi);
+      lightOnPup(_mr.copy(_mi).invert().multiply(R).multiply(_mi));
+    }
     pipeline.render();
     // onto the out canvas (blurred when drunk)
     ctx2.filter = env.blur > 0.02 ? `blur(${(env.blur * 3 * size.w / 1080).toFixed(2)}px)` : 'none';

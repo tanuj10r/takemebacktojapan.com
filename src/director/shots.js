@@ -97,7 +97,7 @@ const A = [
   {
     id: 'A4', name: 'The station announcement', dur: 1.0, look: 'day',
     setup({ pup }) {
-      const p = { x: 51, z: -117.5 };
+      const p = { x: 49.5, z: -117.5 };
       pup.reset({ x: p.x, z: p.z, yaw: Math.PI, posture: 1 });
       pup.react('startle', 0.05, { dur: 0.35 });
       pup.react('headTilt', 0.45, { dur: 0.55 });
@@ -233,7 +233,7 @@ const A = [
       // through the clear middle pane (between the flag's post and the bins), over the glass's low wall, on the
       // checkout counter and its self-registers: Hachi up on his hind legs, paws on the ledge, watching; his ears in
       // the bottom of the frame
-      const cam = V(2.3, 1.12, 2.45);
+      const cam = V(3.0, 1.25, 2.45);
       pup.reset({ x: 3.0, z: 0.74, yaw: Math.atan2(2.9, -6.95), posture: 1 });
       pup.react('faceOnGlass', -0.8, { dur: 3.2, peek: true });
       pup.look(0, 1.5, () => { const c = han.position; return c ? V(c.x, 1.3, c.z) : null; }, 0.8);
@@ -291,7 +291,7 @@ const A = [
     },
   },
   {
-    id: 'A16', name: 'Asleep on the bench', dur: 1.5, look: 'blue',
+    id: 'A16', name: 'Asleep on the bench', dur: 2.6, look: 'blue',
     setup({ pup, han, env }) {
       han.reset({ car: { x: HAN_BAY_K.x, z: HAN_BAY_K.z, a: -Math.PI / 2 }, han: 'hidden' });
       han.hold(-1, 'benchSleep', { x: BENCH.x, z: BENCH.z + 0.1, yaw: Math.PI });
@@ -299,7 +299,7 @@ const A = [
       pup.react('fallAsleep', -2.2, { dur: 3.2 });
       return {
         // from behind the bench, pulling back and up: the two asleep in the foreground, the paddies and Fuji beyond
-        rig: drone(V(BENCH.x + 1.3, 1.1, BENCH.z + 2.3), V(BENCH.x + 2.6, 4.2, BENCH.z + 8.5), V(BENCH.x, 1.0, BENCH.z - 4), { dur: 1.5, fov: 50 }),
+        rig: drone(V(BENCH.x + 1.3, 1.1, BENCH.z + 2.3), V(BENCH.x + 2.6, 4.2, BENCH.z + 8.5), V(BENCH.x, 1.0, BENCH.z - 4), { dur: 2.6, fov: 50 }),
         update(t) { if (!this.song && t >= 0) { this.song = true; env.soundBus.oneShot('theme', { gain: 0.35 }); } },
       };
     },
@@ -510,14 +510,17 @@ const C = [
       pup.react('sneeze', 15.95, { dur: 0.65 });
       // 16.6-17.9 ka-ching: freeze, ears up, big eyes, straight at you, a paw lifts ("...treat?")
       pup.react('freeze', 16.6, { dur: 1.3 });
-      // 17.9-20 the chime: joy: the wiggle, the happiest face
-      pup.react('happyWiggle', 17.9, { dur: 1.2, seated: true });
-      pup.react('bigSmile', 18.9, { dur: 5.0 });
-      pup.react('slowBlink', 21.0, { dur: 0.9, keep: true });
-      pup.react('slowBlink', 22.8, { dur: 0.9, keep: true });
+      /* 17.9-23.9 the chime, whole (Tan, 2026-10-05: "make Hachi jump around and do zoomies in joy"): up and round
+       * in the air, two laps of zoomies round the pavement behind where he sat, another spin in the air, and the
+       * happiest face under the end card */
+      pup.react('hopSpin', 17.9, { dur: 1.1 });
+      pup.react('zoomies', 19.0, { dur: 2.5, back: true, turns: 2, r: 0.45 });
+      pup.react('hopSpin', 21.5, { dur: 1.1, s: -1 });
+      pup.react('bigSmile', 22.6, { dur: 1.4 });
       return {
         rig: (t) => {
-          const d = this.dist * (1 - 0.08 * ease(t / C_LEN));       // a slow push-in, 8% closer by the end
+          let d = this.dist * (1 - 0.08 * ease(t / C_LEN));       // a slow push-in, 8% closer by the end
+          d += 0.75 * ease(seg(t, 18.8, 19.5)) * (1 - ease(seg(t, 21.3, 22.2)));      // (back for his zoomies: both laps in the frame)
           const la = this.lookAhead ?? 0;
           return { p: V(p.x - Math.sin(b) * d, this.camY, p.z + Math.cos(b) * d), l: V(p.x + Math.sin(b) * la, this.lookY, p.z - Math.cos(b) * la), fov: this.fov };
         },
@@ -532,6 +535,8 @@ const C = [
   },
 ];
 for (const c of C_CUES) c._on = false;
+// (Version A's lens goes everywhere: the pup's light follows it, so his cel bands never streak his front)
+for (const q of A) q.lightTurn ??= 'auto';
 
 /* ------------------------------------------ small props ------------------------------------------ */
 /** A sakura petal falling in front of the pup (A5). */
@@ -613,7 +618,7 @@ function sandoPiece(env, t, pup) {
 }
 
 export const VERSIONS = {
-  A: { title: "Hachi's Big Day", shots: A, hook: "Hachi's big day 🐾", endLen: 1.5 },
+  A: { title: "Hachi's Big Day", shots: A, hook: "Hachi's big day 🐾", endLen: 1.5, endY: 0.2 },
   B: { title: 'Hachi Fears Nothing', shots: B },
   C: { title: 'Hachi Hears Japan', shots: C, cues: C_CUES, hook: 'Hachi hears Japan 🔊', endLen: 2.2, capY: 0.5, endY: 0.47 },
 
