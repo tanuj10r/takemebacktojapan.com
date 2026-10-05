@@ -51,8 +51,9 @@ export function drawOverlay(c, W, H, { hook = null, cues = [], t, total, title, 
 
   // the sounds' names: "ぴよぴよ · crosswalk chick" as two lines
   for (const q of cues) {
-    if (!q.cap || t < q.t - 0.02 || t > q.t + q.dur + 0.02) continue;
-    const a = win(t, q.t, Math.min(q.t + q.dur, total - endLen), 0.14, 0.18);
+    const len = q.capDur ?? q.dur;        // (a name may leave before its sound does: the chime's, for his run)
+    if (!q.cap || t < q.t - 0.02 || t > q.t + len + 0.02) continue;
+    const a = win(t, q.t, Math.min(q.t + len, total - endLen), 0.14, 0.18);
     if (a <= 0.01) continue;
     const [jp, en] = q.cap.split(' · ');
     const pop = 1 + 0.06 * (1 - ease((t - q.t) / 0.22));

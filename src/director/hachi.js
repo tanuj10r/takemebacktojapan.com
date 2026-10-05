@@ -42,6 +42,38 @@ const KEYS = Object.keys(BASE());
  * length D, writing over the pose R (already the base).  `snd` lists its sounds: [u, name, gain].
  * ------------------------------------------------------------------------------------------------------------- */
 const wave = (t, hz) => Math.sin(t * Math.PI * 2 * hz);
+/** 0..1 along a run that gets going over its first `i` and pulls up over its last `o` (flat out between). */
+function pace(k, i, o) {
+  const top = 1 / (1 - i / 2 - o / 2);
+  if (k < i) return top * k * k / (2 * i);
+  if (k > 1 - o) { const r = 1 - k; return 1 - top * r * r / (2 * o); }
+  return top * (k - i / 2);
+}
+/** A smooth way through points [F, S] (Catmull-Rom), by distance: at(d) -> { F, S, a: its heading, k: its turn per metre }. */
+function way(pts) {
+  const P = (i) => pts[clamp(i, 0, pts.length - 1)], out = [];
+  for (let i = 0; i < pts.length - 1; i++) for (let j = 0; j < 24; j++) {
+    const u = j / 24, p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+    const c = (n) => 0.5 * (2 * p1[n] + (p2[n] - p0[n]) * u + (2 * p0[n] - 5 * p1[n] + 4 * p2[n] - p3[n]) * u * u + (3 * p1[n] - p0[n] - 3 * p2[n] + p3[n]) * u * u * u);
+    out.push([c(0), c(1), 0]);
+  }
+  out.push([...pts[pts.length - 1], 0]);
+  for (let i = 1; i < out.length; i++) out[i][2] = out[i - 1][2] + Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]);
+  const total = out[out.length - 1][2];
+  const pos = (d) => {
+    d = clamp(d, 0, total);
+    let i = 1; while (i < out.length - 1 && out[i][2] < d) i++;
+    const a = out[i - 1], b = out[i], w = (d - a[2]) / Math.max(1e-6, b[2] - a[2]);
+    return [lerp(a[0], b[0], w), lerp(a[1], b[1], w)];
+  };
+  const head = (d) => { const a = pos(Math.max(0, d - 0.06)), b = pos(Math.min(total, d + 0.06)); return Math.atan2(b[1] - a[1], b[0] - a[0]); };
+  return { total, at(d) { const p = pos(d), dd = clamp(d, 0.2, total - 0.2); return { F: p[0], S: p[1], a: head(clamp(d, 0.06, total - 0.06)), k: turn(head(dd - 0.14), head(dd + 0.14)) / 0.28 }; } };
+}
+const JOY = [
+  way([[0, 0], [-0.9, 0.1], [-1.7, 0.45], [-2.4, 0.25], [-2.45, -0.3], [-1.8, -0.5], [-1.35, 0.0], [-1.8, 0.5], [-2.45, 0.3], [-2.3, -0.3], [-1.7, -0.35]]),
+  way([[-1.7, -0.35], [-1.35, 0.2], [-1.95, 0.5], [-2.5, 0.05], [-1.95, -0.45], [-1.0, -0.12], [0, 0]]),
+];
+
 export const REACTIONS = {
   wakeUp: {
     dur: 3.4, blend: [0.05, 0.3],
@@ -196,6 +228,37 @@ export const REACTIONS = {
       R.posture = 0; R.dy = 0.16 * air; R.dyaw = u < 0.7 ? (o.s ?? 1) * 2 * Math.PI * seg(u, 0.05, 0.68) : 0; R.pitch = -0.12 * air;
       R.mouth = 0.4; R.lids = 0.6; R.blink = 0; R.perk = 1.3; R.earsBack = 0.3 * air; R.wagAmp = 1; R.wagRate = 22; R.paws = 0.4 * air;
       R.crouch = 0.4 * (1 - seg(u, 0, 0.08)) + 0.35 * bell(u, 0.7, 0.9, 0.05, 0.12);
+    },
+  },
+  /* (Tan, 2026-10-05: "Hachi can run behind and then do zoomies ... more natural") C1's chime, the lens still: he
+   * whips round and bolts away from it onto the road, tears about there in loose loops (a figure of eight, never the
+   * same turn twice, leaning into each), skids round into a play bow at you, darts off again and gallops back to
+   * where he sat.  The way is laid out from where he sat ([towards the lens, to his side], metres). */
+  joyRun: {
+    dur: 3.9, blend: [0.12, 0.12], snd: [[0.0, 'dog-awoo', 0.8], [0.3, 'dog-yip', 0.7], [0.55, 'dog-boof', 0.85], [0.66, 'dog-yip', 0.8], [0.97, 'dog-giggle', 0.8]],
+    f(R, u, t, D) {
+      const A = JOY[0], B = JOY[1];
+      const U1 = 0.54, U2 = 0.64, U3 = 0.965;
+      let q, v = 0, bow = 0;
+      if (u < U1) { q = A.at(pace(u / U1, 0.14, 0.08) * A.total); v = 1; }
+      else if (u < U2) { q = A.at(A.total); bow = bell(u, U1, U2, 0.02, 0.02); }
+      else if (u < U3) { const k = (u - U2) / (U3 - U2); q = B.at(pace(k, 0.1, 0.16) * B.total); v = 1; }
+      else q = B.at(B.total);
+      // facing: along the way; in the bow, skidded round to the lens; home, the lens again
+      let a = q.a;
+      if (u >= U1 && u < U2) a = q.a + turn(q.a, 0.2) * seg(u, U1, U1 + 0.025);
+      if (u >= U2 && u < U2 + 0.03) a = 0.2 + turn(0.2, q.a) * seg(u, U2, U2 + 0.03);
+      if (u >= U3) a = 0;
+      R.dyaw = a;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      R.fwd = q.F * ca + q.S * sa; R.side = -q.F * sa + q.S * ca;
+      const run = v * (1 - bow);
+      R.posture = bow > 0.3 ? -1 : 0;
+      R.amp = run; R.bound = 0.75 * run; R.earsBack = 0.7 * run; R.perk = 1.2 + 0.2 * bow; R.mouth = 0.35; R.tuck = 0.25 * run;
+      R.roll = -0.26 * clamp(q.k * 0.55, -1, 1) * run; R.hips = -0.12 * clamp(q.k * 0.55, -1, 1) * run;
+      R.crouch = 0.35 * (bell(u, U1 - 0.03, U1 + 0.02, 0.02, 0.02) + bell(u, U3 - 0.03, U3 + 0.02, 0.02, 0.015));     // the skids
+      R.wagAmp = 0.5 + 0.5 * bow; R.wagRate = 22; R.eye = bow; R.lids = 0.15; R.blink = 0;
+      R.dy = 0.03 * bow * Math.max(0, Math.sin(t * Math.PI * 2 * 5));
     },
   },
   playBow: {

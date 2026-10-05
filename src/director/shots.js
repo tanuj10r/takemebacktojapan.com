@@ -457,7 +457,7 @@ const C_CUES = [
   { t: 12.7, name: 'donki-theme', gain: 0.75, dur: 2.3, fadeOut: 0.3, cap: 'ドンペン堂 · megastore theme' },
   { t: 15.0, name: 'petal', dur: 1.6, cap: '桜 · a petal' },                       // (no file: the wind, and his sneeze)
   { t: 16.6, name: 'ka-ching', gain: 0.95, dur: 1.3, offset: 0.38, cap: 'チャリン · ka-ching' },
-  { t: 17.9, name: 'lawson-chime', gain: 0.8, dur: 5.85, offset: 0.055, fadeOut: 0.15, cap: '入店チャイム · konbini chime' },
+  { t: 17.9, name: 'lawson-chime', gain: 0.8, dur: 5.85, offset: 0.055, fadeOut: 0.15, capDur: 1.3, cap: '入店チャイム · konbini chime' },
 ];
 const C = [
   {
@@ -510,17 +510,16 @@ const C = [
       pup.react('sneeze', 15.95, { dur: 0.65 });
       // 16.6-17.9 ka-ching: freeze, ears up, big eyes, straight at you, a paw lifts ("...treat?")
       pup.react('freeze', 16.6, { dur: 1.3 });
-      /* 17.9-23.9 the chime, whole (Tan, 2026-10-05: "make Hachi jump around and do zoomies in joy"): up and round
-       * in the air, two laps of zoomies round the pavement behind where he sat, another spin in the air, and the
-       * happiest face under the end card */
-      pup.react('hopSpin', 17.9, { dur: 1.1 });
-      pup.react('zoomies', 19.0, { dur: 2.5, back: true, turns: 2, r: 0.45 });
-      pup.react('hopSpin', 21.5, { dur: 1.1, s: -1 });
-      pup.react('bigSmile', 22.6, { dur: 1.4 });
+      /* 17.9-23.9 the chime, whole (Tan, 2026-10-05: "make Hachi jump around and do zoomies in joy"; then: "the
+       * frame fixed. Hachi can run behind and then do zoomies ... more natural"): a spin in the air, then joyRun
+       * (hachi.js): away onto the road, loose loops there, a play bow at you, off again and back; the happiest face */
+      pup.react('hopSpin', 17.9, { dur: 0.8 });
+      pup.react('joyRun', 18.6, { dur: 3.9 });
+      pup.react('bigSmile', 22.45, { dur: 1.5 });
       return {
         rig: (t) => {
-          let d = this.dist * (1 - 0.08 * ease(t / C_LEN));       // a slow push-in, 8% closer by the end
-          d += 0.75 * ease(seg(t, 18.8, 19.5)) * (1 - ease(seg(t, 21.3, 22.2)));      // (back for his zoomies: both laps in the frame)
+          // a slow push-in, 6% closer by the chime; still from there (his run is the motion)
+          const d = this.dist * (1 - 0.06 * ease(Math.min(t, 17.9) / 17.9));
           const la = this.lookAhead ?? 0;
           return { p: V(p.x - Math.sin(b) * d, this.camY, p.z + Math.cos(b) * d), l: V(p.x + Math.sin(b) * la, this.lookY, p.z - Math.cos(b) * la), fov: this.fov };
         },
@@ -620,7 +619,7 @@ function sandoPiece(env, t, pup) {
 export const VERSIONS = {
   A: { title: "Hachi's Big Day", shots: A, hook: "Hachi's big day 🐾", endLen: 1.5, endY: 0.2 },
   B: { title: 'Hachi Fears Nothing', shots: B },
-  C: { title: 'Hachi Hears Japan', shots: C, cues: C_CUES, hook: 'Hachi hears Japan 🔊', endLen: 2.2, capY: 0.5, endY: 0.47 },
+  C: { title: 'Hachi Hears Japan', shots: C, cues: C_CUES, hook: 'Hachi hears Japan 🔊', endLen: 1.4, capY: 0.5, endY: 0.47 },
 
 };
 export { C_CUES };
