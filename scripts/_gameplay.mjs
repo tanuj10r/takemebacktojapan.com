@@ -15,10 +15,18 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const argv = process.argv.slice(2);
 const flag = (n, d = null) => { const i = argv.indexOf('--' + n); return i < 0 ? d : argv[i + 1]; };
 const DRY = argv.includes('--dry');
-const MBPS = +flag('mbps', 16), SHARE_MBPS = +flag('share', 1.85);
 const ONLY = flag('only')?.split(',') ?? null;
 const W = +flag('w', 1920), H = +flag('h', 1080);
-const OUT = path.resolve(flag('out', path.join(ROOT, 'docs', 'promo', 'out', `gameplay-${W}x${H}.mp4`)));
+// --dsf 2 (the default): the page at twice the pixels and the game's own render raised to match (its pixel budget
+// is for play at 60 fps; a frame-by-frame take can afford every pixel), so the master is 3840x2160.  The files:
+// the master, a 1080p brought down from it (every pixel of it four of the master's), and a 720p copy for a phone.
+const DSF = +flag('dsf', 2), SHARE_MBPS = +flag('share', 2.5);
+const OUTS = [
+  ...(DSF > 1 ? [{ tag: `${W * DSF}x${H * DSF}`, w: W * DSF, h: H * DSF, bps: 42e6, codec: 'avc1.640034' }] : []),
+  { tag: `${W}x${H}`, w: W, h: H, bps: 20e6, codec: 'avc1.64002A' },
+  { tag: `${W}x${H}-share`, w: Math.round(W * 2 / 3 / 2) * 2, h: Math.round(H * 2 / 3 / 2) * 2, bps: SHARE_MBPS * 1e6, codec: 'avc1.640020' },
+];
+const OUT = path.resolve(flag('out', path.join(ROOT, 'docs', 'promo', 'out', 'gameplay.mp4')));      // (each file: gameplay-<its size>.mp4)
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 
 const LOCK = '/tmp/lawson-browser.lock';
@@ -36,9 +44,9 @@ try {
   await server.listen();
   browser = await chromium.launch({
     channel: 'chrome', headless: true,
-    args: ['--use-angle=metal', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', '--auto-accept-this-tab-capture', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
+    args: [...(DSF > 1 && !DRY ? [`--force-device-scale-factor=${DSF}`] : []), '--use-angle=metal', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', '--auto-accept-this-tab-capture', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
   });
-  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
+  const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: DRY ? 1 : DSF });
   const page = await ctx.newPage();
   page.setDefaultTimeout(600000);
   const errs = [];
@@ -46,6 +54,7 @@ try {
   await page.addInitScript({ path: path.join(ROOT, 'scripts', '_gameplay-vtime.js') });
   await page.goto('http://127.0.0.1:5192/');
   await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
+  if (DSF > 1 && !DRY) log('render', JSON.stringify(await page.evaluate((px) => { const p = window.__scene.pipeline; p.pixelBudget = Math.max(p.pixelBudget, px * 1.02); window.dispatchEvent(new Event('resize')); return { scale: p.scale, size: [p.size.x, p.size.y], dpr: devicePixelRatio }; }, W * H * DSF * DSF)));
 
   /* ------------------------------ the player's hands (in the page) ------------------------------ */
   await page.evaluate(() => {
@@ -68,7 +77,7 @@ try {
         const P = (j) => K[Math.max(0, Math.min(K.length - 1, j))], a = P(i), b = P(i + 1), f = Math.max(0, Math.min(1, (u - a[0]) / (b[0] - a[0])));
         const cr = (n) => { const p0 = P(i - 1)[n], p1 = a[n], p2 = b[n], p3 = P(i + 2)[n]; return 0.5 * (2 * p1 + (p2 - p0) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f * f + (3 * p1 - p0 - 3 * p2 + p3) * f * f * f); };
         const x = cr(1), y = cr(2), z = cr(3); let lx = cr(4), ly = cr(5), lz = cr(6);
-        if (D.pupFrom !== undefined) { const w0 = Math.max(0, Math.min(1, (u - D.pupFrom) / 1.6)), w = w0 * w0 * (3 - 2 * w0), q = pup(); lx += (q.x - lx) * w; ly += (q.y + 0.25 - ly) * w; lz += (q.z - lz) * w; }
+        if (D.pupFrom !== undefined) { const w0 = Math.max(0, Math.min(1, (u - D.pupFrom) / 1.6, ((D.pupTo ?? 1e9) - u) / 1.4)), w = w0 * w0 * (3 - 2 * w0), q = pup(); lx += (q.x - lx) * w; ly += (q.y + 0.25 - ly) * w; lz += (q.z - lz) * w; }
         // (the look eased a little behind where it is asked: a gimbal, not a snap)
         D.l ??= [lx, ly, lz]; const e = Math.min(1, dt * 5); D.l = [D.l[0] + (lx - D.l[0]) * e, D.l[1] + (ly - D.l[1]) * e, D.l[2] + (lz - D.l[2]) * e];
         player.scripted = true; player.vel.set(0, 0, 0); player.pos.set(x, world.heightAt(x, z), z);
@@ -125,7 +134,7 @@ try {
       pan: (a, b, pitch, sec) => new Promise((ok) => { S.go = null; const t0 = performance.now(); S.aim = () => { const u = Math.min(1, (performance.now() - t0) / 1000 / sec), e = u * u * (3 - 2 * u); if (u >= 1) setTimeout(ok, 0); return { yaw: a + wrap(b - a) * e, pitch, k: 8, max: 3 }; }; }),
       free: () => { S.go = null; S.aim = null; },
       /** fly the lens along `keys` [t, x, y, z, lookX, lookY, lookZ] (the look turning to the pup from `pupFrom` s) */
-      drone: (keys, { pupFrom } = {}) => new Promise((ok) => { S.go = null; S.aim = null; S.drone = { keys, dur: keys[keys.length - 1][0], t0: performance.now(), pupFrom, done: ok }; }),
+      drone: (keys, { pupFrom, pupTo } = {}) => new Promise((ok) => { S.go = null; S.aim = null; S.drone = { keys, dur: keys[keys.length - 1][0], t0: performance.now(), pupFrom, pupTo, done: ok }; }),
       droneT: () => (S.drone ? (performance.now() - S.drone.t0) / 1000 : -1),
       /** the HUD off (a flyby is not play) and on again */
       clean: (on) => { let e = document.getElementById('gp-clean'); if (!e) { e = document.createElement('style'); e.id = 'gp-clean'; e.textContent = 'body.gp-clean > *:not(#view) { opacity: 0 !important; }'; document.head.appendChild(e); } document.body.classList.toggle('gp-clean', on); },
@@ -173,34 +182,35 @@ try {
           while (R.now() - tR < 130 && !(C.got > g0 && C.latestAt >= tR + 18)) await wait(2);
           if (C.got > g0) { const g1 = C.got, t1 = R.now(); while (R.now() - t1 < 26 && C.got === g1) await wait(2); } else C.stale++;
           const f = new VideoFrame(C.latest, { timestamp: Math.round(C.out * 1e6 / 60), duration: Math.round(1e6 / 60) });
-          C.enc.encode(f, { keyFrame: C.out % 120 === 0 });
-          C.g2.drawImage(f, 0, 0, C.cv2.width, C.cv2.height);
-          const f2 = new VideoFrame(C.cv2, { timestamp: f.timestamp, duration: f.duration });
-          C.enc2.encode(f2, { keyFrame: C.out % 120 === 0 }); f2.close();
+          for (const o of C.outs) {
+            if (!o.cv) { o.enc.encode(f, { keyFrame: C.out % 120 === 0 }); continue; }
+            o.g.drawImage(f, 0, 0, o.w, o.h);
+            const f2 = new VideoFrame(o.cv, { timestamp: f.timestamp, duration: f.duration });
+            o.enc.encode(f2, { keyFrame: C.out % 120 === 0 }); f2.close();
+          }
           f.close(); C.out++;
-          while (C.enc.encodeQueueSize > 4 || C.enc2.encodeQueueSize > 4) await wait(2);
+          while (C.outs.some((o) => o.enc.encodeQueueSize > 4)) await wait(2);
         } else await wait(3);                     // (between takes the game runs on unrecorded: no faster than the script can watch it, ~4x)
       }
     }
     window.CAP = {
       C,
-      async start(w, h, bitrate, capture, shareBps) {
+      async start(w, h, outs, capture) {
         C.capture = capture;
         if (capture) {
-          const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60, width: w, height: h, cursor: 'never' }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include' });
+          const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60, width: { ideal: w }, height: { ideal: h }, cursor: 'never' }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include' });
           C.stream = stream;
           const reader = new MediaStreamTrackProcessor({ track: stream.getVideoTracks()[0] }).readable.getReader();
           (async () => { for (;;) { const { value, done } = await reader.read(); if (done) break; C.latest?.close(); C.latest = value; C.latestAt = R.now(); C.got++; } })();
           while (!C.latest) await wait(10);
           C.size = [C.latest.displayWidth, C.latest.displayHeight];
-          C.enc = new VideoEncoder({ output: (c, meta) => { const b = new Uint8Array(c.byteLength); c.copyTo(b); C.chunks.push({ data: b, ts: c.timestamp, dur: c.duration, key: c.type === 'key' }); if (meta?.decoderConfig) C.vConfig = meta.decoderConfig; }, error: (e) => { C.err = String(e); } });
-          C.enc.configure({ codec: 'avc1.64002A', width: C.size[0], height: C.size[1], bitrate, framerate: 60, avc: { format: 'avc' }, latencyMode: 'quality', bitrateMode: 'variable' });
-        }
-        if (capture) {
-          // (the share copy: the same frames at 1280 wide and a bit rate a phone will take)
-          const k = 1280 / C.size[0]; C.cv2 = new OffscreenCanvas(1280, Math.round(C.size[1] * k / 2) * 2); C.g2 = C.cv2.getContext('2d'); C.g2.imageSmoothingQuality = 'high'; C.chunks2 = [];
-          C.enc2 = new VideoEncoder({ output: (c, meta) => { const b = new Uint8Array(c.byteLength); c.copyTo(b); C.chunks2.push({ data: b, ts: c.timestamp, dur: c.duration, key: c.type === 'key' }); if (meta?.decoderConfig) C.vConfig2 = meta.decoderConfig; }, error: (e) => { C.err = String(e); } });
-          C.enc2.configure({ codec: 'avc1.640020', width: C.cv2.width, height: C.cv2.height, bitrate: shareBps, framerate: 60, avc: { format: 'avc' }, latencyMode: 'quality', bitrateMode: 'variable' });
+          C.outs = outs.map((o) => {
+            const q = { ...o, chunks: [], vConfig: null };
+            if (o.w !== C.size[0] || o.h !== C.size[1]) { q.cv = new OffscreenCanvas(o.w, o.h); q.g = q.cv.getContext('2d'); q.g.imageSmoothingQuality = 'high'; }
+            q.enc = new VideoEncoder({ output: (c, meta) => { const b = new Uint8Array(c.byteLength); c.copyTo(b); q.chunks.push({ data: b, ts: c.timestamp, dur: c.duration, key: c.type === 'key' }); if (meta?.decoderConfig) q.vConfig = meta.decoderConfig; }, error: (e) => { C.err = o.tag + ': ' + String(e); } });
+            q.enc.configure({ codec: o.codec, width: o.w, height: o.h, bitrate: o.bps, framerate: 60, avc: { format: 'avc' }, latencyMode: 'quality', bitrateMode: 'variable' });
+            return q;
+          });
         }
         C.on = true; C.rec = true; C.keep.push([0, null]);
         C.done = loop();
@@ -211,7 +221,7 @@ try {
         C.on = false; await C.done;
         if (C.rec) C.keep[C.keep.length - 1][1] = C.frame / 60;
         if (!C.capture) return { frames: C.frame, keep: C.keep };
-        await C.enc.flush(); C.enc.close(); await C.enc2.flush(); C.enc2.close();
+        for (const o of C.outs) { await o.enc.flush(); o.enc.close(); }
         C.stream.getTracks().forEach((t) => t.stop());
         // the sound: the kept stretches end to end (a few ms of fade at each join), levelled, AAC
         const { muxMP4 } = await import('/src/director/record.js'), { normalise } = await import('/src/director/loudness.js');
@@ -234,10 +244,9 @@ try {
           aenc.encode(ad); ad.close();
         }
         await aenc.flush(); aenc.close();
-        const file = muxMP4({ w: C.size[0], h: C.size[1], fps: 60, video: C.chunks, vConfig: C.vConfig, audio: chunksA, aConfig, acodec: 'mp4a.40.2', sr });
-        window.__recBlob = new Blob([file], { type: 'video/mp4' });
-        window.__recBlob2 = new Blob([muxMP4({ w: C.cv2.width, h: C.cv2.height, fps: 60, video: C.chunks2, vConfig: C.vConfig2, audio: chunksA, aConfig, acodec: 'mp4a.40.2', sr })], { type: 'video/mp4' });
-        return { bytes: window.__recBlob.size, bytes2: window.__recBlob2.size, frames: C.out, gameFrames: C.frame, stale: C.stale, keep: C.keep.map(([x, y]) => [+x.toFixed(2), +y.toFixed(2)]), loud, err: C.err ?? null };
+        window.__recBlobs = {};
+        for (const o of C.outs) { window.__recBlobs[o.tag] = new Blob([muxMP4({ w: o.w, h: o.h, fps: 60, video: o.chunks, vConfig: o.vConfig, audio: chunksA, aConfig, acodec: 'mp4a.40.2', sr })], { type: 'video/mp4' }); o.chunks = null; }
+        return { files: Object.fromEntries(Object.entries(window.__recBlobs).map(([k, b]) => [k, b.size])), captured: C.size, frames: C.out, gameFrames: C.frame, stale: C.stale, keep: C.keep.map(([x, y]) => [+x.toFixed(2), +y.toFixed(2)]), loud, err: C.err ?? null };
       },
     };
   });
@@ -247,7 +256,7 @@ try {
       await gp(() => window.VT.manual());
       await page.mouse.move(W * 0.3, H * 0.3);
       await page.mouse.click(W * 0.3, H * 0.3);
-      log('recording', JSON.stringify(await gp(([w, h, b, cap, s]) => window.CAP.start(w, h, b, cap, s), [W, H, MBPS * 1e6, !DRY, SHARE_MBPS * 1e6])));
+      log('recording', JSON.stringify(await gp(([w, h, outs, cap]) => window.CAP.start(w, h, outs, cap), [W * DSF, H * DSF, OUTS, !DRY])));
     },
     pause: () => { log('--- cut (out)'); return gp(() => window.CAP.rec(false)); },
     resume: () => { log('--- cut (in)'); return gp(() => window.CAP.rec(true)); },
@@ -255,10 +264,10 @@ try {
       const r = await gp(() => window.CAP.stop());
       log('take', JSON.stringify(r));
       if (DRY) return;
-      for (const [name, blob, bytes] of [[OUT, '__recBlob', r.bytes], [OUT.replace(/\.mp4$/, '-share.mp4'), '__recBlob2', r.bytes2]]) {
-        const f = fs.openSync(name, 'w');
+      for (const [tag, bytes] of Object.entries(r.files)) {
+        const name = OUT.replace(/\.mp4$/, `-${tag}.mp4`), f = fs.openSync(name, 'w');
         for (let o = 0; o < bytes; o += 4 << 20) {
-          const b64 = await gp(async ([blob, a, z]) => { const u = new Uint8Array(await window[blob].slice(a, z).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode(...u.subarray(i, i + 32768)); return btoa(s); }, [blob, o, Math.min(bytes, o + (4 << 20))]);
+          const b64 = await gp(async ([tag, a, z]) => { const u = new Uint8Array(await window.__recBlobs[tag].slice(a, z).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode(...u.subarray(i, i + 32768)); return btoa(s); }, [tag, o, Math.min(bytes, o + (4 << 20))]);
           fs.writeSync(f, Buffer.from(b64, 'base64'));
         }
         fs.closeSync(f);

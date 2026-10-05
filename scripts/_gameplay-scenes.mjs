@@ -76,19 +76,29 @@ export default async function scenes({ page, gp, st, until, log, sleep, REC, DRY
       [6.4, 47.4, 5.6, -34, 57.5, 5.5, -42],
       [8.0, 48.2, 5.2, -52, 54, 4, -66],
       [10.0, 50, 4.4, -80, 51.5, 1.2, -100],
-      [11.8, 50.3, 3.2, -91.5, 51.5, 0.6, -103],
-      [13.6, 50.4, 2.3, -97.2, 51.5, 0.5, -103.8],
-      [15.0, 50.9, 1.9, -99.6, 51.5, 0.4, -103.8],
+      // (Tan, 2026-10-05: "bring the camera lower so Hachi is larger during the charge") down to his own height
+      // beside the flock, three or four metres from his lap
+      [11.6, 49.7, 2.4, -91.5, 51.5, 0.5, -102],
+      [13.2, 49.2, 1.1, -98.6, 51.5, 0.4, -103.8],
+      [15.0, 49.3, 0.75, -101.0, 51.5, 0.4, -103.8],
+      // (Tan, 2026-10-05: "a few seconds at the station plaza so the train announcements are heard and the trains are
+      // seen") up from him and over the station's roof: platform 1's train pulling out
+      [16.8, 58, 5, -107, 54, 4, -124],
+      [18.6, 70, 6.5, -117, 60, 3, -130],
+      [20.4, 76.5, 4.2, -128.4, 56, 2.3, -132.8],
     ];
     await gp(() => { window.GP.free(); window.GP.clean(true); window.GP.put(50, 26, 0); });
-    const flown = gp((K) => window.GP.drone(K, { pupFrom: 10.9 }), KEYS);
+    const flown = gp((K) => window.GP.drone(K, { pupFrom: 10.5, pupTo: 16.2 }), KEYS);
     await sleep(0.4);
     await REC.resume();
     for (const t of [1, 3, 5, 6.4, 8]) { while ((await gp(() => window.GP.droneT())) < t && (await gp(() => window.GP.droneT())) >= 0) await sleep(0.05); await snap('F-' + t); }
     while ((await gp(() => window.GP.droneT())) < 9.9) await sleep(0.05);
     // he is set down at the plaza's edge, his tour taken up there: the pigeons are on his way
     log('F pup', JSON.stringify(await gp(() => { const g = window.__guide, T = g.A.tour, k = T.findIndex((L) => L.hear === 'station'); Object.assign(g.G, { x: 51.4, z: -91.5, speed: 0, act: null, field: null, state: 'home' }); g.leadFrom(k); return k; })));
-    for (const t of [11, 12, 13, 14, 14.9]) { while ((await gp(() => window.GP.droneT())) < t && (await gp(() => window.GP.droneT())) >= 0) await sleep(0.05); await snap('F-' + t); log('   ', JSON.stringify(await st())); }
+    for (const t of [11, 12, 13, 14, 14.9, 16, 17, 17.8, 18.6, 19.2, 19.8, 20.3]) {
+      // (platform 1's train, its doors just shut: it pulls out as the lens comes over)
+      if (t === 18.6) await gp(() => window.__train('platform-shut'));
+      while ((await gp(() => window.GP.droneT())) < t && (await gp(() => window.GP.droneT())) >= 0) await sleep(0.05); await snap('F-' + t); log('   ', JSON.stringify(await st())); }
     await flown;
     await sleep(0.3);
     await REC.pause();
